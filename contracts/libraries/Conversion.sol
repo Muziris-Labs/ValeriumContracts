@@ -28,15 +28,14 @@ library Conversion {
      * @return byte32Inputs The array of padded bytes32 values
      */
     function convertToInputs(bytes32 _message, bytes32 _hash) internal pure returns (bytes32 [] memory){
-        bytes32[] memory byte32Inputs = new bytes32[](64);
+        bytes32[] memory byte32Inputs = new bytes32[](33);
         // Convert the message to padded bytes32 values
         for (uint256 i = 0; i < 32; i++) {
             byte32Inputs[i] = convertToPaddedByte32(_message[i]);
         }
-        // Apprend the hash to the array of padded bytes32 values
-        for (uint256 i = 0; i < 32; i++) {
-            byte32Inputs[i + 32] = convertToPaddedByte32(_hash[i]);
-        }
+        // Append the hash to the array of padded bytes32 values
+        byte32Inputs[32] = _hash;
+
         return byte32Inputs;
     }
 
