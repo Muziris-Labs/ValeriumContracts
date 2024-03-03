@@ -55,7 +55,11 @@ abstract contract ERC2771Context is Context {
     modifier onlyTrustedForwarder() {
         require(isTrustedForwarder(msg.sender), "ERC2771Context: caller is not the trusted forwarder");
         _;
-        
+    }
+
+    modifier notTrustedForwarder() {
+        require(!isTrustedForwarder(msg.sender), "ERC2771Context: caller is the trusted forwarder");
+        _;
     }
 
     /**
