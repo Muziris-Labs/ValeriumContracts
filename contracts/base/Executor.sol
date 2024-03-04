@@ -37,7 +37,7 @@ abstract contract Executor {
      * @param value Array of Ether values.
      * @param data Array of data payloads.
      */
-    function batchExecute(address[] calldata to, uint256[] calldata value, bytes[] calldata data) internal {
+    function batchExecute(address[] calldata to, uint256[] calldata value, bytes[] calldata data) internal returns (bool allSuccess){
         // Check if the 'to' and 'data' arrays have the same length, and if 'value' array is either empty or has the same length as 'data'
         require(to.length == data.length && (value.length == 0 || value.length == data.length), "wrong array lengths");
 
@@ -69,9 +69,11 @@ abstract contract Executor {
                 let success := call(gas(), toAddr, valueAmount, dataStart, dataLength, 0, 0)
                 // If the call was not successful, revert the transaction
                 if iszero(success) {
-                    revert(0, 0)
+                    allSuccess := 0
                 }
             }
         }
+
+        return allSuccess;
     }
 }

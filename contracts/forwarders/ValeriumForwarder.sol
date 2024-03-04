@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/Nonces.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "../external/ERC2771Context.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 import "../Valerium.sol";
 
 /**
@@ -171,7 +170,7 @@ contract ValeriumForwarder is EIP712, Nonces {
 
             uint256 gasLeft;
 
-            success = Valerium(request.recipient).executeTxWithForwarder(
+            success = Valerium(payable(request.recipient)).executeTxWithForwarder(
                 request.proof,
                 request.to,
                 request.value,

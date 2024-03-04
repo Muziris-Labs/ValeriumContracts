@@ -144,7 +144,7 @@ contract Valerium is
      * @param _newRecoveryVerifier The address of the new recovery verifier
      * @param _publicStorage The new public storage
      */
-    function ChangeRecovery(bytes calldata _proof, bytes32 _newRecoveryHash, address _newRecoveryVerifier, bytes calldata _publicStorage) public payable notTrustedForwarder {
+    function changeRecovery(bytes calldata _proof, bytes32 _newRecoveryHash, address _newRecoveryVerifier, bytes calldata _publicStorage) public payable notTrustedForwarder {
         // Verifying the proof
         require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
         // Updating the Recovery Hash, Recovery Verifier and Public Storage
@@ -190,7 +190,7 @@ contract Valerium is
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
      */
-    function executeBatchTxWithForwarder(bytes calldata _proof, address[] calldata to, uint256[] calldata value, bytes[] calldata data, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable onlyTrustedForwarder {
+    function executeBatchTxWithForwarder(bytes calldata _proof, address[] calldata to, uint256[] calldata value, bytes[] calldata data, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable onlyTrustedForwarder returns(bool success){
         // Calculating the total value of the batch transactions
         uint256 totalValue = 0;
         for (uint i = 0; i < value.length; i++) {
@@ -203,7 +203,7 @@ contract Valerium is
         // Verifying the proof
         require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
         // Executing the batch transactions
-        batchExecute(to, value, data);
+        success = batchExecute(to, value, data);
 
         // Deducting gas fees from the user's Valerium Wallet
         uint256 gasUsed = startGas - gasleft();
@@ -249,7 +249,7 @@ contract Valerium is
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
      */
-    function ChangeRecoveryWithForwarder(bytes calldata _proof, bytes32 _newRecoveryHash, address _newRecoveryVerifier, bytes calldata _publicStorage, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable onlyTrustedForwarder {
+    function changeRecoveryWithForwarder(bytes calldata _proof, bytes32 _newRecoveryHash, address _newRecoveryVerifier, bytes calldata _publicStorage, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable onlyTrustedForwarder {
         // Checking if the Valerium Wallet has sufficient balance
         require(address(this).balance >= estimatedFees, "Valerium: insufficient balance");
 
@@ -284,4 +284,8 @@ contract Valerium is
             return nonce++;
         }
     }
+
+    receive() external payable {}
+
+    fallback() external payable {}
 }
