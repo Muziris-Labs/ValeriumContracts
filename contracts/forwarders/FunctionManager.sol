@@ -8,10 +8,49 @@ import "./DataManager.sol";
 import "../external/ERC2771Context.sol";
 
 interface Valerium {
-    function executeTxWithForwarder(bytes calldata _proof, address to, uint256 value, bytes calldata data, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) external payable returns(bool success);
-    function executeBatchTxWithForwarder(bytes calldata _proof, address[] calldata to, uint256[] calldata value, bytes[] calldata data, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) external payable returns(bool success);
-    function executeRecoveryWithForwarder(bytes calldata _proof, bytes32 _newTxHash, address _newTxVerifier, bytes calldata _publicStorage, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) external payable;
-    function changeRecoveryWithForwarder(bytes calldata _proof, bytes32 _newRecoveryHash, address _newRecoveryVerifier, bytes calldata _publicStorage, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) external payable;
+    function executeTxWithForwarder(
+        bytes calldata _proof,
+        address to, 
+        uint256 value, 
+        bytes calldata data, 
+        address token,
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) external payable returns(bool success);
+
+    function executeBatchTxWithForwarder(
+        bytes calldata _proof, 
+        address[] calldata to, 
+        uint256[] calldata value, 
+        bytes[] calldata data, 
+        address token,
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) external payable returns(bool success);
+
+    function executeRecoveryWithForwarder(
+        bytes calldata _proof, 
+        bytes32 _newTxHash, 
+        address _newTxVerifier, 
+        bytes calldata _publicStorage, 
+        address token,
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) external payable;
+
+    function changeRecoveryWithForwarder(
+        bytes calldata _proof, 
+        bytes32 _newRecoveryHash, 
+        address _newRecoveryVerifier, 
+        bytes calldata _publicStorage,
+        address token,
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) external payable;
 }
 
 abstract contract FunctionManager is EIP712, Nonces, DataManager {
@@ -50,6 +89,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     /**
      * Executes the "executeTxWithForwarder" function of the Valerium contract.
      * @param request ForwardExecuteData struct
+     * @param token The address of the token
      * @param gasPrice Estimated Gas Price for the transaction
      * @param baseGas Base Gas Fee for the transaction
      * @param estimatedFees estimated
@@ -57,6 +97,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
      */
     function _execute(
         ForwardExecuteData calldata request,
+        address token,
         uint256 gasPrice,
         uint256 baseGas,
         uint256 estimatedFees,
@@ -92,6 +133,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 request.to,
                 request.value,
                 request.data,
+                token,
                 gasPrice,
                 baseGas,
                 estimatedFees
@@ -216,6 +258,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     /**
      * Executes the "executeBatchTxWithForwarder" function of the Valerium contract.
      * @param request ForwardExecuteBatchData struct
+     * @param token The address of the token
      * @param gasPrice Estimated Gas Price for the transaction
      * @param baseGas Base Gas Fee for the transaction
      * @param estimatedFees estimated
@@ -223,6 +266,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
      */
     function _executeBatch(
         ForwardExecuteBatchData calldata request,
+        address token,
         uint256 gasPrice,
         uint256 baseGas,
         uint256 estimatedFees,
@@ -258,6 +302,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 request.to,
                 request.value,
                 request.data,
+                token,
                 gasPrice,
                 baseGas,
                 estimatedFees
@@ -361,6 +406,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     /**
      * Executes the "executeRecoveryWithForwarder" function of the Valerium contract.
      * @param request ForwardExecuteRecoveryhData struct
+     * @param token The address of the token
      * @param gasPrice Estimated Gas Price for the transaction
      * @param baseGas Base Gas Fee for the transaction
      * @param estimatedFees estimated
@@ -368,6 +414,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
      */
     function _executeRecovery(
         ForwardExecuteRecoveryData calldata request,
+        address token,
         uint256 gasPrice,
         uint256 baseGas,
         uint256 estimatedFees,
@@ -403,6 +450,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 request.newTxHash,
                 request.newTxVerifier,
                 request.publicStorage,
+                token,
                 gasPrice,
                 baseGas,
                 estimatedFees
@@ -501,6 +549,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     /**
      * Executes the "changeRecoveryWithForwarder" function of the Valerium contract.
      * @param request ForwardChangeRecoveryData struct
+     * @param token The address of the token
      * @param gasPrice Estimated Gas Price for the transaction
      * @param baseGas Base Gas Fee for the transaction
      * @param estimatedFees estimated
@@ -508,6 +557,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
      */
     function _changeRecovery(
         ForwardChangeRecoveryData calldata request,
+        address token,
         uint256 gasPrice,
         uint256 baseGas,
         uint256 estimatedFees,
@@ -543,6 +593,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 request.newRecoveryHash,
                 request.newRecoveryVerifier,
                 request.publicStorage,
+                token,
                 gasPrice,
                 baseGas,
                 estimatedFees

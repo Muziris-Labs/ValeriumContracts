@@ -17,14 +17,15 @@ contract ValeriumForwarder is FunctionManager {
     /**
      * @notice This function is used to execute the "executeWithForwarder" function of the target contract.
      * @param request The struct of forwarded message for "executeWithForwarder" function
+     * @param token The address of the token
      * @param gasPrice The gas price of the transaction
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
-    function execute(ForwardExecuteData calldata request, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function execute(ForwardExecuteData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
-        if (!_execute(request, gasPrice, baseGas, estimatedFees, true)) {
+        if (!_execute(request, token, gasPrice, baseGas, estimatedFees, true)) {
             revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
         }
     }
@@ -32,15 +33,16 @@ contract ValeriumForwarder is FunctionManager {
     /**
      * @notice This function is used to execute the "executeBatchWithForwarder" function of the target contract.
      * @param request The struct of forwarded message for "executeBatchWithForwarder" function
+     * @param token The address of the token
      * @param gasPrice The gas price of the transaction
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
 
-    function executeBatch(ForwardExecuteBatchData calldata request, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function executeBatch(ForwardExecuteBatchData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
-        if (!_executeBatch(request, gasPrice, baseGas, estimatedFees, true)) {
+        if (!_executeBatch(request, token, gasPrice, baseGas, estimatedFees, true)) {
             revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
         }
     }
@@ -48,15 +50,16 @@ contract ValeriumForwarder is FunctionManager {
     /**
      * @notice This function is used to execute the "executeRecoveryWithForwarder" function of the target contract.
      * @param request The struct of forwarded message for "executeRecoveryWithForwarder" function
+     * @param token The address of the token
      * @param gasPrice The gas price of the transaction
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
 
-    function executeRecovery(ForwardExecuteRecoveryData calldata request, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function executeRecovery(ForwardExecuteRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
-        if (!_executeRecovery(request, gasPrice, baseGas, estimatedFees, true)) {
+        if (!_executeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
             revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
         }
     }
@@ -64,14 +67,15 @@ contract ValeriumForwarder is FunctionManager {
     /**
      * @notice This function is used to execute the "changeRecoveryWithForwarder" function of the target contract.
      * @param request The struct of forwarded message for "changeRecoveryWithForwarder" function
+     * @param token The address of the token
      * @param gasPrice The gas price of the transaction
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
-    function changeRecovery(ForwardChangeRecoveryData calldata request, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function changeRecovery(ForwardChangeRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
-        if (!_changeRecovery(request, gasPrice, baseGas, estimatedFees, true)) {
+        if (!_changeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
             revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
         }
     }
