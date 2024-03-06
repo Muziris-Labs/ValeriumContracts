@@ -8,6 +8,18 @@ import "./DataManager.sol";
 import "../external/ERC2771Context.sol";
 
 interface Valerium {
+    /**
+     * @notice Executes a transaction with provided parameters using the trusted forwarder
+     * @param _proof The proof input
+     * @param to The address of the receiver
+     * @param value The amount of Ether to send
+     * @param data The data payload
+     * @param token The address of the token, if the address is 0x0, it is an Ether transaction
+     * @param gasPrice The gas price
+     * @param baseGas The base gas
+     * @param estimatedFees The estimated fees
+     * @return success boolean flag indicating if the call succeeded
+     */
     function executeTxWithForwarder(
         bytes calldata _proof,
         address to, 
@@ -19,6 +31,17 @@ interface Valerium {
         uint256 estimatedFees
         ) external payable returns(bool success);
 
+    /**
+     * @notice Executes a batch of transactions with provided parameters using the trusted forwarder
+     * @param _proof The proof input
+     * @param to Array of destination addresses
+     * @param value Array of Ether values
+     * @param data Array of data payloads
+     * @param token The address of the token, if the address is 0x0, it is an Ether transaction
+     * @param gasPrice The gas price
+     * @param baseGas The base gas
+     * @param estimatedFees The estimated fees
+     */
     function executeBatchTxWithForwarder(
         bytes calldata _proof, 
         address[] calldata to, 
@@ -30,6 +53,17 @@ interface Valerium {
         uint256 estimatedFees
         ) external payable returns(bool success);
 
+    /**
+     * @notice Executes a recovery transaction to change the transaction hash, transaction verifier and public storage using the trusted forwarder
+     * @param _proof The proof input
+     * @param _newTxHash The new transaction hash
+     * @param _newTxVerifier The address of the new transaction verifier
+     * @param _publicStorage The new public storage
+     * @param token The address of the token, if the address is 0x0, it is an Ether transaction
+     * @param gasPrice The gas price
+     * @param baseGas The base gas
+     * @param estimatedFees The estimated fees
+     */
     function executeRecoveryWithForwarder(
         bytes calldata _proof, 
         bytes32 _newTxHash, 
@@ -41,6 +75,17 @@ interface Valerium {
         uint256 estimatedFees
         ) external payable;
 
+    /**
+     * @notice Executes a recovery transaction to change the recovery hash, recovery verifier and public storage using the trusted forwarder
+     * @param _proof The proof input
+     * @param _newRecoveryHash The new recovery hash
+     * @param _newRecoveryVerifier The address of the new recovery verifier
+     * @param _publicStorage The new public storage
+     * @param token The address of the token, if the address is 0x0, it is an Ether transaction
+     * @param gasPrice The gas price
+     * @param baseGas The base gas
+     * @param estimatedFees The estimated fees
+     */
     function changeRecoveryWithForwarder(
         bytes calldata _proof, 
         bytes32 _newRecoveryHash, 
@@ -128,7 +173,12 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
 
             uint256 gasLeft;
 
-            success = Valerium(payable(request.recipient)).executeTxWithForwarder(
+            address recipient = request.recipient;
+            uint256 reqGas = request.gas;
+
+            bytes4 functionSignature = Valerium.executeTxWithForwarder.selector;
+            bytes memory encodedParams = abi.encodePacked(
+                functionSignature,
                 request.proof,
                 request.to,
                 request.value,
@@ -139,6 +189,22 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 estimatedFees
             );
 
+            assembly {
+                let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
+                let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
+
+                success := call(
+                    reqGas,
+                    recipient,
+                    0,
+                    encodedParamsData,
+                    encodedParamsLength,
+                    0,
+                    0
+                )
+
+                gasLeft := gas()
+            }
             _checkForwardedGas(gasLeft, request);
         }
     }
@@ -295,8 +361,6 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
-            uint256 gasLeft;
-
             success = Valerium(payable(request.recipient)).executeBatchTxWithForwarder(
                 request.proof,
                 request.to,
@@ -308,7 +372,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 estimatedFees
             );
 
-            _checkForwardedGas(gasLeft, request);
+            _checkForwardedGas(gasleft(), request);
         }
     }
 
@@ -440,12 +504,17 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
 
         // Ignore an invalid request because requireValidRequest = false
         if (isTrustedForwarder && signerMatch && active) {
-            // Nonce should be used before the call to prevent reusing by reentrancy
+             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
             uint256 gasLeft;
 
-            Valerium(payable(request.recipient)).executeRecoveryWithForwarder(
+            address recipient = request.recipient;
+            uint256 reqGas = request.gas;
+
+            bytes4 functionSignature = Valerium.executeRecoveryWithForwarder.selector;
+            bytes memory encodedParams = abi.encodePacked(
+                functionSignature,
                 request.proof,
                 request.newTxHash,
                 request.newTxVerifier,
@@ -455,6 +524,23 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 baseGas,
                 estimatedFees
             );
+
+            assembly {
+                let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
+                let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
+
+                success := call(
+                    reqGas,
+                    recipient,
+                    0,
+                    encodedParamsData,
+                    encodedParamsLength,
+                    0,
+                    0
+                )
+
+                gasLeft := gas()
+            }
 
             _checkForwardedGas(gasLeft, request);
 
@@ -583,12 +669,17 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
 
         // Ignore an invalid request because requireValidRequest = false
         if (isTrustedForwarder && signerMatch && active) {
-            // Nonce should be used before the call to prevent reusing by reentrancy
+             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
             uint256 gasLeft;
 
-            Valerium(payable(request.recipient)).changeRecoveryWithForwarder(
+            address recipient = request.recipient;
+            uint256 reqGas = request.gas;
+
+            bytes4 functionSignature = Valerium.changeRecoveryWithForwarder.selector;
+            bytes memory encodedParams = abi.encodePacked(
+                functionSignature,
                 request.proof,
                 request.newRecoveryHash,
                 request.newRecoveryVerifier,
@@ -599,6 +690,23 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 estimatedFees
             );
 
+            assembly {
+                let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
+                let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
+
+                success := call(
+                    reqGas,
+                    recipient,
+                    0,
+                    encodedParamsData,
+                    encodedParamsLength,
+                    0,
+                    0
+                )
+
+                gasLeft := gas()
+            }
+            
             _checkForwardedGas(gasLeft, request);
 
             return true;
