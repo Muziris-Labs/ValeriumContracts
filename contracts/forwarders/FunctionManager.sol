@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./DataManager.sol";
 import "../external/ERC2771Context.sol";
 
-interface Valerium {
+interface IValerium {
     /**
      * @notice Executes a transaction with provided parameters using the trusted forwarder
      * @param _proof The proof input
@@ -220,7 +220,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 baseGas,
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
-        bytes4 functionSignature = Valerium.executeTxWithForwarder.selector;
+        bytes4 functionSignature = IValerium.executeTxWithForwarder.selector;
         return abi.encodePacked(
             functionSignature,
             request.proof,
@@ -419,7 +419,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 baseGas,
         uint256 estimatedFees
     ) internal virtual returns (bool success) {
-        return Valerium(payable(request.recipient)).executeBatchTxWithForwarder(
+        return IValerium(payable(request.recipient)).executeBatchTxWithForwarder(
             request.proof,
             request.to,
             request.value,
@@ -625,7 +625,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 baseGas,
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
-        bytes4 functionSignature = Valerium.executeRecoveryWithForwarder.selector;
+        bytes4 functionSignature = IValerium.executeRecoveryWithForwarder.selector;
         return abi.encodePacked(
                 functionSignature,
                 request.proof,
@@ -826,7 +826,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 baseGas,
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
-        bytes4 functionSignature = Valerium.changeRecoveryWithForwarder.selector;
+        bytes4 functionSignature = IValerium.changeRecoveryWithForwarder.selector;
         return abi.encodePacked(
             functionSignature,
             request.proof,

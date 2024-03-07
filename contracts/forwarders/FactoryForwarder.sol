@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/utils/Nonces.sol";
  * @author Anoy Roy Chwodhury - <anoyroyc3545@gmail.com>
  */
 
-interface ValeriumProxyFactory {
+interface IValeriumProxyFactory {
     function createProxyWithNonce(string memory domain, bytes memory initializer, uint256 saltNonce) external;
 }
 
@@ -93,7 +93,7 @@ contract FactoryForwarder is EIP712, Nonces {
 
             uint256 gasLeft;
 
-            ValeriumProxyFactory(request.recipient).createProxyWithNonce(request.domain, request.initializer, request.salt);
+            IValeriumProxyFactory(request.recipient).createProxyWithNonce(request.domain, request.initializer, request.salt);
 
             _checkForwardedGas(gasLeft, request);
 

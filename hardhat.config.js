@@ -11,7 +11,13 @@ module.exports = {
       optimizer: {
         enabled: true,
         runs: 800,
+        details: {
+          yulDetails: {
+            optimizerSteps: "u",
+          },
+        },
       },
+      viaIR: true,
     },
   },
   networks: {
