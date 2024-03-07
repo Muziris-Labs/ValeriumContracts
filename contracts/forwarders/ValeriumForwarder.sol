@@ -10,8 +10,6 @@ import "./FunctionManager.sol";
  */
 
 contract ValeriumForwarder is FunctionManager {
-    error ERC2771ForwarderInvalidSigner(address signer, address from);
-
     constructor(string memory name, string memory version) FunctionManager(name, version) {}
 
     /**

@@ -148,65 +148,90 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 estimatedFees,
         bool requireValidRequest
     ) internal virtual returns (bool success) {
-        (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
+          {
+            (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
 
-        // Need to explicitly specify if a revert is required since non-reverting is default for
-        // batches and reversion is opt-in since it could be useful in some scenarios
-        if (requireValidRequest) {
-            if (!isTrustedForwarder) {
-                revert ERC2771UntrustfulTarget(request.to, address(this));
+            // Need to explicitly specify if a revert is required since non-reverting is default for
+            // batches and reversion is opt-in since it could be useful in some scenarios
+            if (requireValidRequest) {
+                if (!isTrustedForwarder) {
+                    revert ERC2771UntrustfulTarget(request.recipient, address(this));
+                }
+
+                if (!active) {
+                    revert ERC2771ForwarderExpiredRequest(request.deadline);
+                }
+
+                if (!signerMatch) {
+                    revert ERC2771ForwarderInvalidSigner(signer, request.from);
+                }
             }
 
-            if (!active) {
-                revert ERC2771ForwarderExpiredRequest(request.deadline);
+            // Ignore an invalid request because requireValidRequest = false
+            if(!isTrustedForwarder || !active || !signerMatch) {
+                return false;
             }
 
-            if (!signerMatch) {
-                revert ERC2771ForwarderInvalidSigner(signer, request.from);
-            }
-        }
-
-        // Ignore an invalid request because requireValidRequest = false
-        if (isTrustedForwarder && signerMatch && active) {
             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
-            uint256 gasLeft;
-
-            address recipient = request.recipient;
-            uint256 reqGas = request.gas;
-
-            bytes4 functionSignature = Valerium.executeTxWithForwarder.selector;
-            bytes memory encodedParams = abi.encodePacked(
-                functionSignature,
-                request.proof,
-                request.to,
-                request.value,
-                request.data,
-                token,
-                gasPrice,
-                baseGas,
-                estimatedFees
-            );
-
-            assembly {
-                let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
-                let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
-
-                success := call(
-                    reqGas,
-                    recipient,
-                    0,
-                    encodedParamsData,
-                    encodedParamsLength,
-                    0,
-                    0
-                )
-
-                gasLeft := gas()
-            }
-            _checkForwardedGas(gasLeft, request);
         }
+
+        uint256 gasLeft;
+
+        address recipient = request.recipient;
+        uint256 reqGas = request.gas;
+
+        // Encode the parameters for optimized gas usage
+        bytes memory encodedParams = encodeExecuteParams(request, token, gasPrice, baseGas, estimatedFees);
+
+        assembly {
+            let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
+            let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
+
+            success := call(
+                reqGas,
+                recipient,
+                0,
+                encodedParamsData,
+                encodedParamsLength,
+                0,
+                0
+            )
+
+            gasLeft := gas()
+        }
+
+        _checkForwardedGas(gasLeft, request);
+    }
+
+    /**
+     * Encodes the parameters for the "executeTxWithForwarder" function of the Valerium contract for avoiding stack too deep error
+     * @param request ForwardExecuteData struct
+     * @param token The address of the token
+     * @param gasPrice Estimated Gas Price for the transaction
+     * @param baseGas Base Gas Fee for the transaction
+     * @param estimatedFees estimated
+     */
+    function encodeExecuteParams(
+        ForwardExecuteData calldata request,
+        address token,
+        uint256 gasPrice,
+        uint256 baseGas,
+        uint256 estimatedFees
+    ) internal pure returns (bytes memory) {
+        bytes4 functionSignature = Valerium.executeTxWithForwarder.selector;
+        return abi.encodePacked(
+            functionSignature,
+            request.proof,
+            request.to,
+            request.value,
+            request.data,
+            token,
+            gasPrice,
+            baseGas,
+            estimatedFees
+        );
     }
 
 
@@ -241,23 +266,33 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         ForwardExecuteData calldata request
     ) internal view virtual returns (bool, address) {
         (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
-            keccak256(
-                abi.encode(
-                    FORWARD_EXECUTE_TYPEHASH,
-                    request.from,
-                    request.recipient,
-                    request.deadline,
-                    nonces(request.from),
-                    request.gas,
-                    keccak256(request.proof),
-                    request.to,
-                    request.value,
-                    keccak256(request.data)
-                )
-            )
+            hashEncodedRequest(request)
         ).tryRecover(request.signature);
 
         return (err == ECDSA.RecoverError.NoError, recovered);
+    }
+
+    /**
+     * Encodes the parameters for the "executeTxWithForwarder" function of the Valerium contract for avoiding stack too deep error
+     * @param request ForwardExecuteData struct
+     */
+    function hashEncodedRequest(
+        ForwardExecuteData calldata request
+    ) internal view virtual returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                FORWARD_EXECUTE_TYPEHASH,
+                request.from,
+                request.recipient,
+                request.deadline,
+                nonces(request.from),
+                request.gas,
+                keccak256(request.proof),
+                request.to,
+                request.value,
+                keccak256(request.data)
+            )
+        );
     }
 
      /**
@@ -356,24 +391,44 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
             }
         }
 
-        // Ignore an invalid request because requireValidRequest = false
-        if (isTrustedForwarder && signerMatch && active) {
-            // Nonce should be used before the call to prevent reusing by reentrancy
-            _useNonce(signer);
-
-            success = Valerium(payable(request.recipient)).executeBatchTxWithForwarder(
-                request.proof,
-                request.to,
-                request.value,
-                request.data,
-                token,
-                gasPrice,
-                baseGas,
-                estimatedFees
-            );
-
-            _checkForwardedGas(gasleft(), request);
+         // Ignore an invalid request because requireValidRequest = false
+        if(!isTrustedForwarder || !active || !signerMatch) {
+            return false;
         }
+
+        // Nonce should be used before the call to prevent reusing by reentrancy
+        _useNonce(signer);
+
+        success = executeBatchFromRequest(request, token, gasPrice, baseGas, estimatedFees);
+
+        _checkForwardedGas(gasleft(), request);
+    }
+
+    /**
+     * Executes the "executeBatchTxWithForwarder" function of the Valerium contract.
+     * @param request ForwardExecuteBatchData struct
+     * @param token The address of the token
+     * @param gasPrice Estimated Gas Price for the transaction
+     * @param baseGas Base Gas Fee for the transaction
+     * @param estimatedFees estimated
+     */
+    function executeBatchFromRequest(
+        ForwardExecuteBatchData calldata request,
+        address token,
+        uint256 gasPrice,
+        uint256 baseGas,
+        uint256 estimatedFees
+    ) internal virtual returns (bool success) {
+        return Valerium(payable(request.recipient)).executeBatchTxWithForwarder(
+            request.proof,
+            request.to,
+            request.value,
+            request.data,
+            token,
+            gasPrice,
+            baseGas,
+            estimatedFees
+        );
     }
 
 
@@ -409,26 +464,38 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     ) internal view virtual returns (bool, address) {
         require(request.to.length == request.value.length && request.to.length == request.data.length, "Mismatched input arrays");
 
+        (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
+            hashEncodedRequest(request)
+        ).tryRecover(request.signature);
+
+        return (err == ECDSA.RecoverError.NoError, recovered);
+    }
+
+    /**
+     * Encodes the parameters for the "executeBatchTxWithForwarder" function of the Valerium contract for avoiding stack too deep error
+     * @param request ForwardExecuteBatchData struct
+     */
+    function hashEncodedRequest(
+        ForwardExecuteBatchData calldata request
+    ) internal view virtual returns (bytes32) {
         bytes32 dataHash;
         for (uint i = 0; i < request.data.length; i++) {
             dataHash = keccak256(abi.encodePacked(dataHash, keccak256(request.data[i])));
         }
-
-        (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
-            keccak256(abi.encode(
+        return keccak256(
+            abi.encode(
                 FORWARD_EXECUTE_BATCH_TYPEHASH,
                 request.from,
                 request.recipient,
                 request.deadline,
+                nonces(request.from),
                 request.gas,
                 keccak256(request.proof),
                 keccak256(abi.encodePacked(request.to)),
                 keccak256(abi.encodePacked(request.value)),
                 dataHash
-            ))
-        ).tryRecover(request.signature);
-
-        return (err == ECDSA.RecoverError.NoError, recovered);
+            )
+        );
     }
 
     /**
@@ -484,36 +551,82 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 estimatedFees,
         bool requireValidRequest
     ) internal virtual returns (bool success){
-        (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
+        {
+            (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
 
-        // Need to explicitly specify if a revert is required since non-reverting is default for
-        // batches and reversion is opt-in since it could be useful in some scenarios
-        if (requireValidRequest) {
-            if (!isTrustedForwarder) {
-                revert ERC2771UntrustfulTarget(request.recipient, address(this));
+            // Need to explicitly specify if a revert is required since non-reverting is default for
+            // batches and reversion is opt-in since it could be useful in some scenarios
+            if (requireValidRequest) {
+                if (!isTrustedForwarder) {
+                    revert ERC2771UntrustfulTarget(request.recipient, address(this));
+                }
+
+                if (!active) {
+                    revert ERC2771ForwarderExpiredRequest(request.deadline);
+                }
+
+                if (!signerMatch) {
+                    revert ERC2771ForwarderInvalidSigner(signer, request.from);
+                }
             }
 
-            if (!active) {
-                revert ERC2771ForwarderExpiredRequest(request.deadline);
+            // Ignore an invalid request because requireValidRequest = false
+            if(!isTrustedForwarder || !active || !signerMatch) {
+                return false;
             }
 
-            if (!signerMatch) {
-                revert ERC2771ForwarderInvalidSigner(signer, request.from);
-            }
-        }
-
-        // Ignore an invalid request because requireValidRequest = false
-        if (isTrustedForwarder && signerMatch && active) {
-             // Nonce should be used before the call to prevent reusing by reentrancy
+            // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
-            uint256 gasLeft;
+        }
 
-            address recipient = request.recipient;
-            uint256 reqGas = request.gas;
+        address recipient = request.recipient;
+        uint256 reqGas = request.gas;
+        
+        // Encode the parameters for more efficient gas usage
+        bytes memory encodedParams = encodeExecuteRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
+            
+        uint256 gasLeft;
+        assembly {
+            let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
+            let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
 
-            bytes4 functionSignature = Valerium.executeRecoveryWithForwarder.selector;
-            bytes memory encodedParams = abi.encodePacked(
+            success := call(
+                reqGas,
+                recipient,
+                0,
+                encodedParamsData,
+                encodedParamsLength,
+                0,
+                0
+            )
+
+            gasLeft := gas()
+        }
+
+        _checkForwardedGas(gasLeft, request);
+
+        return true;
+        
+    }
+
+    /**
+     * Encodes the parameters for the "executeRecoveryWithForwarder" function of the Valerium contract to prevent stack too deep error
+     * @param request ForwardExecuteRecoveryData struct
+     * @param token token address
+     * @param gasPrice gas price
+     * @param baseGas base fees
+     * @param estimatedFees estimated fees
+     */
+    function encodeExecuteRecoveryParams(
+        ForwardExecuteRecoveryData calldata request,
+        address token,
+        uint256 gasPrice,
+        uint256 baseGas,
+        uint256 estimatedFees
+    ) internal pure returns (bytes memory) {
+        bytes4 functionSignature = Valerium.executeRecoveryWithForwarder.selector;
+        return abi.encodePacked(
                 functionSignature,
                 request.proof,
                 request.newTxHash,
@@ -523,29 +636,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 gasPrice,
                 baseGas,
                 estimatedFees
-            );
-
-            assembly {
-                let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
-                let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
-
-                success := call(
-                    reqGas,
-                    recipient,
-                    0,
-                    encodedParamsData,
-                    encodedParamsLength,
-                    0,
-                    0
-                )
-
-                gasLeft := gas()
-            }
-
-            _checkForwardedGas(gasLeft, request);
-
-            return true;
-        }
+            ); 
     }
 
      /**
@@ -580,20 +671,33 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     ) internal view virtual returns (bool, address) {
 
         (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
-            keccak256(abi.encode(
+            hashEncodedRequest(request)
+        ).tryRecover(request.signature);
+
+        return (err == ECDSA.RecoverError.NoError, recovered);
+    }
+
+    /**
+     * Encodes the parameters for the "executeRecoveryWithForwarder" function of the Valerium contract to prevent stack too deep error
+     * @param request ForwardExecuteRecoveryData struct
+     */
+    function hashEncodedRequest(
+        ForwardExecuteRecoveryData calldata request
+    ) internal view virtual returns (bytes32) {
+        return keccak256(
+            abi.encode(
                 FORWARD_EXECUTE_RECOVERY_TYPEHASH,
                 request.from,
                 request.recipient,
                 request.deadline,
+                nonces(request.from),
                 request.gas,
                 keccak256(request.proof),
                 request.newTxHash,
                 request.newTxVerifier,
                 keccak256(request.publicStorage)
-            ))
-        ).tryRecover(request.signature);
-
-        return (err == ECDSA.RecoverError.NoError, recovered);
+            )
+        );
     }
 
     /**
@@ -649,68 +753,91 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 estimatedFees,
         bool requireValidRequest
     ) internal virtual returns (bool success){
-        (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
+        {
+            (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
 
-        // Need to explicitly specify if a revert is required since non-reverting is default for
-        // batches and reversion is opt-in since it could be useful in some scenarios
-        if (requireValidRequest) {
-            if (!isTrustedForwarder) {
-                revert ERC2771UntrustfulTarget(request.recipient, address(this));
+            // Need to explicitly specify if a revert is required since non-reverting is default for
+            // batches and reversion is opt-in since it could be useful in some scenarios
+            if (requireValidRequest) {
+                if (!isTrustedForwarder) {
+                    revert ERC2771UntrustfulTarget(request.recipient, address(this));
+                }
+
+                if (!active) {
+                    revert ERC2771ForwarderExpiredRequest(request.deadline);
+                }
+
+                if (!signerMatch) {
+                    revert ERC2771ForwarderInvalidSigner(signer, request.from);
+                }
             }
 
-            if (!active) {
-                revert ERC2771ForwarderExpiredRequest(request.deadline);
+            // Ignore an invalid request because requireValidRequest = false
+            if(!isTrustedForwarder || !active || !signerMatch) {
+                return false;
             }
 
-            if (!signerMatch) {
-                revert ERC2771ForwarderInvalidSigner(signer, request.from);
-            }
-        }
-
-        // Ignore an invalid request because requireValidRequest = false
-        if (isTrustedForwarder && signerMatch && active) {
-             // Nonce should be used before the call to prevent reusing by reentrancy
+            // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
-
-            uint256 gasLeft;
-
-            address recipient = request.recipient;
-            uint256 reqGas = request.gas;
-
-            bytes4 functionSignature = Valerium.changeRecoveryWithForwarder.selector;
-            bytes memory encodedParams = abi.encodePacked(
-                functionSignature,
-                request.proof,
-                request.newRecoveryHash,
-                request.newRecoveryVerifier,
-                request.publicStorage,
-                token,
-                gasPrice,
-                baseGas,
-                estimatedFees
-            );
-
-            assembly {
-                let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
-                let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
-
-                success := call(
-                    reqGas,
-                    recipient,
-                    0,
-                    encodedParamsData,
-                    encodedParamsLength,
-                    0,
-                    0
-                )
-
-                gasLeft := gas()
-            }
-            
-            _checkForwardedGas(gasLeft, request);
-
-            return true;
         }
+
+        uint256 gasLeft;
+
+        address recipient = request.recipient;
+        uint256 reqGas = request.gas;
+
+        // Encode the parameters for more efficient gas usage
+        bytes memory encodedParams = encodeChangeRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
+
+        assembly {
+            let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
+            let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
+
+            success := call(
+                reqGas,
+                recipient,
+                0,
+                encodedParamsData,
+                encodedParamsLength,
+                0,
+                0
+            )
+
+            gasLeft := gas()
+        }
+            
+        _checkForwardedGas(gasLeft, request);
+
+        return true;
+    }
+
+    /**
+     * Encodes the parameters for the "changeRecoveryWithForwarder" function of the Valerium contract to prevent stack too deep error
+     * @param request ForwardChangeRecoveryData struct
+     * @param token token address
+     * @param gasPrice gas price
+     * @param baseGas base fees
+     * @param estimatedFees estimated fees
+     */
+    function encodeChangeRecoveryParams(
+        ForwardChangeRecoveryData calldata request,
+        address token,
+        uint256 gasPrice,
+        uint256 baseGas,
+        uint256 estimatedFees
+    ) internal pure returns (bytes memory) {
+        bytes4 functionSignature = Valerium.changeRecoveryWithForwarder.selector;
+        return abi.encodePacked(
+            functionSignature,
+            request.proof,
+            request.newRecoveryHash,
+            request.newRecoveryVerifier,
+            request.publicStorage,
+            token,
+            gasPrice,
+            baseGas,
+            estimatedFees
+        );
     }
 
      /**
@@ -745,20 +872,33 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     ) internal view virtual returns (bool, address) {
 
         (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
-            keccak256(abi.encode(
-                FORWARD_EXECUTE_RECOVERY_TYPEHASH,
+            hashEncodedRequest(request)
+        ).tryRecover(request.signature);
+
+        return (err == ECDSA.RecoverError.NoError, recovered);
+    }
+
+    /**
+     * Encodes the parameters for the "changeRecoveryWithForwarder" function of the Valerium contract to prevent stack too deep error
+     * @param request ForwardChangeRecoveryData struct
+     */
+    function hashEncodedRequest(
+        ForwardChangeRecoveryData calldata request
+    ) internal view virtual returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                FORWARD_CHANGE_RECOVERY_TYPEHASH,
                 request.from,
                 request.recipient,
                 request.deadline,
+                nonces(request.from),
                 request.gas,
                 keccak256(request.proof),
                 request.newRecoveryHash,
                 request.newRecoveryVerifier,
                 keccak256(request.publicStorage)
-            ))
-        ).tryRecover(request.signature);
-
-        return (err == ECDSA.RecoverError.NoError, recovered);
+            )
+        );
     }
 
     /**
