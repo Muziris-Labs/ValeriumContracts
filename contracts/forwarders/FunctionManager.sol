@@ -186,15 +186,12 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         bytes memory encodedParams = encodeExecuteParams(request, token, gasPrice, baseGas, estimatedFees);
 
         assembly {
-            let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
-            let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
-
             success := call(
                 reqGas,
                 recipient,
                 0,
-                encodedParamsData,
-                encodedParamsLength,
+                add(encodedParams, 0x20),
+                mload(encodedParams),
                 0,
                 0
             )
@@ -221,7 +218,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
         bytes4 functionSignature = IValerium.executeTxWithForwarder.selector;
-        return abi.encodePacked(
+        return abi.encodeWithSelector(
             functionSignature,
             request.proof,
             request.to,
@@ -249,7 +246,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         (bool isValid, address recovered) = _recoverForwardSigner(request);
 
         return (
-            _isTrustedByTarget(request.to),
+            _isTrustedByTarget(request.recipient),
             request.deadline >= block.timestamp,
             isValid && recovered == request.from,
             recovered
@@ -462,7 +459,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
     function _recoverForwardSigner(
         ForwardExecuteBatchData calldata request
     ) internal view virtual returns (bool, address) {
-        require(request.to.length == request.value.length && request.to.length == request.data.length, "Mismatched input arrays");
+        require(request.to.length == request.data.length && (request.value.length == 0 || request.value.length == request.data.length), "Mismatched input arrays");
 
         (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
             hashEncodedRequest(request)

@@ -11,8 +11,8 @@ async function main() {
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  const counter = await hre.ethers.deployContract("FactoryForwarder", [
-    "Factory Forwarder",
+  const counter = await hre.ethers.deployContract("ValeriumForwarder", [
+    "Valerium Forwarder",
     "1",
   ]);
 
