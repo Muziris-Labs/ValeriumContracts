@@ -43,7 +43,7 @@ contract FactoryForwarder is EIP712, Nonces {
 
     // typehash of ForwardDeployData
     bytes32 internal constant FORWARD_DEPLOY_TYPEHASH = keccak256(
-        "ForwardDeploy(address from,address recipient,uint256 deadline,uint256 nonce,uint256 gas,string domain,bytes initializer,uint256 salt)"
+        "ForwardDeploy(address from,address recipient,uint48 deadline,uint256 nonce,uint256 gas,string domain,bytes initializer,uint256 salt)"
     );
 
     /**
@@ -91,11 +91,9 @@ contract FactoryForwarder is EIP712, Nonces {
             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
-            uint256 gasLeft;
-
             IValeriumProxyFactory(request.recipient).createProxyWithNonce(request.domain, request.initializer, request.salt);
 
-            _checkForwardedGas(gasLeft, request);
+            _checkForwardedGas(gasleft(), request);
 
             return true;
         }
@@ -138,6 +136,7 @@ contract FactoryForwarder is EIP712, Nonces {
                 request.from,
                 request.recipient,
                 request.deadline,
+                nonces(request.from),
                 request.gas,
                 keccak256(bytes(request.domain)),
                 keccak256(request.initializer),

@@ -4,13 +4,14 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ValeriumProxy.sol";
 import "./IProxyCreationCallback.sol";
 import "../base/DomainManager.sol";
+import "../external/ERC2771Context.sol";
 
 /**
  * @title Proxy Factory - Allows to create a new proxy contract and execute a message call to the new proxy within one transaction.
  * @author Stefan George - @Georgi87
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
-contract ValeriumProxyFactory is DomainManager {
+contract ValeriumProxyFactory is DomainManager, ERC2771Context {
     event ProxyCreation(ValeriumProxy indexed proxy, address singleton);
     event SingletonUpdated(address singleton);
 
@@ -151,5 +152,14 @@ contract ValeriumProxyFactory is DomainManager {
             id := chainid()
         }
         return id;
+    }
+
+    /**
+     * @notice Allows the Genesis Address to setup the forwarder.
+     * @param forwarder Address of the forwarder contract.
+     */
+    function setupForwarder(address forwarder) public {
+        require(msg.sender == GenesisAddress, "Only the Genesis Address can setup the forwarder");
+        setupTrustedForwarder(forwarder);
     }
 }
