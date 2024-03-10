@@ -33,46 +33,37 @@ abstract contract Executor {
      * @dev This method doesn't perform any sanity check of the transactions, such as:
      *      - if the contract at `to` address has code or not
      *      It is the responsibility of the caller to perform such checks.
-     * @param to Array of destination addresses.
-     * @param value Array of Ether values.
-     * @param data Array of data payloads.
+     * @param tos Array of destination addresses.
+     * @param values Array of Ether values.
+     * @param datas Array of data payloads.
      */
-    function batchExecute(address[] calldata to, uint256[] calldata value, bytes[] calldata data) internal returns (bool allSuccess){
-        // Check if the 'to' and 'data' arrays have the same length, and if 'value' array is either empty or has the same length as 'data'
-        require(to.length == data.length && (value.length == 0 || value.length == data.length), "wrong array lengths");
+    function batchExecute(address[] memory tos, uint256[] memory values, bytes[] memory datas) internal returns (bool allSuccess){
+        // Ensure that the lengths of the 'tos', 'values', and 'datas' arrays are all the same
+        require(tos.length == values.length && tos.length == datas.length, "Array lengths must match");
 
-        // Start of assembly block
-        assembly {
-            // Load the length of the 'to' array
-            let len := calldataload(to.offset)
-            // Load the length of the 'value' array
-            let valueLen := calldataload(value.offset)
-
-            // Start of for loop that iterates over the 'to' array
-            for { let i := 0 } lt(i, len) { i := add(i, 1) } {
+        // Iterate over the 'tos' array
+        for (uint i = 0; i < tos.length; i++) {
+            // Start of assembly block
+            assembly {
                 // Load the 'to' address for the current iteration
-                let toAddr := calldataload(add(add(to.offset, 0x20), mul(i, 0x20)))
-                // Initialize the 'value' amount to 0
-                let valueAmount := 0
-                // If 'value' array is not empty, load the 'value' amount for the current iteration
-                if valueLen {
-                    valueAmount := calldataload(add(add(value.offset, 0x20), mul(i, 0x20)))
-                }
-                // Load the offset of the 'data' for the current iteration
-                let dataOffset := calldataload(add(add(data.offset, 0x20), mul(i, 0x20)))
-                // Load the length of the 'data' for the current iteration
-                let dataLength := calldataload(dataOffset)
+                let to := mload(add(tos, mul(add(i, 1), 0x20)))
+                // Load the 'value' amount for the current iteration
+                let value := mload(add(values, mul(add(i, 1), 0x20)))
                 // Calculate the start of the 'data' for the current iteration
-                let dataStart := add(dataOffset, 0x20)
+                let data := add(datas, mul(add(i, 1), 0x20))
+                // Load the length of the 'data' for the current iteration
+                let dataLength := mload(add(datas, mul(i, 0x20)))
 
                 // Execute the call and store the success status
-                let success := call(gas(), toAddr, valueAmount, dataStart, dataLength, 0, 0)
+                let result := call(gas(), to, value, data, dataLength, 0, 0)
+
                 // If the call was not successful, revert the transaction
-                if iszero(success) {
+                switch iszero(result)
+                case 1 {
                     allSuccess := 0
                     revert(0, 0)
                 }
-            }
+             }
         }
     }
 }

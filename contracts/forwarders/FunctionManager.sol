@@ -396,9 +396,11 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         // Nonce should be used before the call to prevent reusing by reentrancy
         _useNonce(signer);
 
-        success = executeBatchFromRequest(request, token, gasPrice, baseGas, estimatedFees);
+        executeBatchFromRequest(request, token, gasPrice, baseGas, estimatedFees);
 
         _checkForwardedGas(gasleft(), request);
+
+        return true;
     }
 
     /**
@@ -415,8 +417,8 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 gasPrice,
         uint256 baseGas,
         uint256 estimatedFees
-    ) internal virtual returns (bool success) {
-        return IValerium(payable(request.recipient)).executeBatchTxWithForwarder(
+    ) internal virtual {
+        IValerium(payable(request.recipient)).executeBatchTxWithForwarder(
             request.proof,
             request.to,
             request.value,
@@ -479,6 +481,14 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         for (uint i = 0; i < request.data.length; i++) {
             dataHash = keccak256(abi.encodePacked(dataHash, keccak256(request.data[i])));
         }
+        bytes32 addressHash;
+        for (uint i = 0; i < request.to.length; i++) {
+            addressHash = keccak256(abi.encodePacked(addressHash, request.to[i]));
+        }
+        bytes32 valueHash;
+        for (uint i = 0; i < request.value.length; i++) {
+            valueHash= keccak256(abi.encodePacked(valueHash, abi.encodePacked(request.value[i])));
+        }
         return keccak256(
             abi.encode(
                 FORWARD_EXECUTE_BATCH_TYPEHASH,
@@ -488,8 +498,8 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
                 nonces(request.from),
                 request.gas,
                 keccak256(request.proof),
-                keccak256(abi.encodePacked(request.to)),
-                keccak256(abi.encodePacked(request.value)),
+                addressHash,
+                valueHash,
                 dataHash
             )
         );

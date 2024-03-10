@@ -41,7 +41,7 @@ contract DataManager {
 
     // typehash of ForwardExecuteBatchData
     bytes32 internal constant FORWARD_EXECUTE_BATCH_TYPEHASH = keccak256(
-        "ForwardExecuteBatch(address from,address recipient,uint256 deadline,uint256 nonce,uint256 gas,bytes proof,address[] to,uint256[] value,bytes[] data)"
+        "ForwardExecuteBatch(address from,address recipient,uint256 deadline,uint256 nonce,uint256 gas,bytes proof,bytes32 to,bytes32 value,bytes32 data)"
     );
 
     // struct of forwarded message for "executeRecoveryWithForwarder" function
