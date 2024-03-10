@@ -584,16 +584,14 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         bytes memory encodedParams = encodeExecuteRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
             
         uint256 gasLeft;
-        assembly {
-            let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
-            let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
 
+        assembly {
             success := call(
                 reqGas,
                 recipient,
                 0,
-                encodedParamsData,
-                encodedParamsLength,
+                add(encodedParams, 0x20),
+                 mload(encodedParams),
                 0,
                 0
             )
@@ -602,9 +600,6 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         }
 
         _checkForwardedGas(gasLeft, request);
-
-        return true;
-        
     }
 
     /**
@@ -623,7 +618,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
         bytes4 functionSignature = IValerium.executeRecoveryWithForwarder.selector;
-        return abi.encodePacked(
+        return abi.encodeWithSelector(
                 functionSignature,
                 request.proof,
                 request.newTxHash,
@@ -787,15 +782,12 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         bytes memory encodedParams = encodeChangeRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
 
         assembly {
-            let encodedParamsData := add(encodedParams, 0x20)  // Skip the length field of the bytes array
-            let encodedParamsLength := mload(encodedParams)  // Get the length of the bytes array
-
             success := call(
                 reqGas,
                 recipient,
                 0,
-                encodedParamsData,
-                encodedParamsLength,
+                add(encodedParams, 0x20),
+                mload(encodedParams),
                 0,
                 0
             )
@@ -804,8 +796,6 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         }
             
         _checkForwardedGas(gasLeft, request);
-
-        return true;
     }
 
     /**
@@ -824,7 +814,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
         bytes4 functionSignature = IValerium.changeRecoveryWithForwarder.selector;
-        return abi.encodePacked(
+        return abi.encodeWithSelector(
             functionSignature,
             request.proof,
             request.newRecoveryHash,

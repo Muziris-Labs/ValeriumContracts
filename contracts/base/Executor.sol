@@ -70,10 +70,9 @@ abstract contract Executor {
                 // If the call was not successful, revert the transaction
                 if iszero(success) {
                     allSuccess := 0
+                    revert(0, 0)
                 }
             }
         }
-
-        return allSuccess;
     }
 }
