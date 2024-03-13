@@ -32,4 +32,21 @@ abstract contract ProofManager is Verifier{
         }
         return verifyProof(_proof, publicInputs, _verifier);
     }
+
+    /**
+     * @notice Verifies the proof and returns the result of verification. This overload is used for verifying the proof with EIP-1271 signature.
+     * @param _proof The proof inputs
+     * @param _message The Message
+     * @param _hash The hash
+     * @param _verifier The address of the verifier contract
+     */
+    function verify(
+        bytes calldata _proof,
+        bytes32 _message,
+        bytes32 _hash,
+        address _verifier
+    ) internal view returns (bool) {
+        bytes32[] memory publicInputs = Conversion.convertToInputs(_message, _hash);
+        return verifyProof(_proof, publicInputs, _verifier);
+    }
 }

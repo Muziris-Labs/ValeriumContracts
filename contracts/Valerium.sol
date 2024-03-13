@@ -355,6 +355,25 @@ contract Valerium is
         }
     }
 
+
+    /**
+     * @notice Verifies if the proof is valid or not
+     * @dev The parameters are named to maintain the same implementation as EIP-1271
+     *      Should return whether the proof provided is valid for the provided data
+     * @param _hash the message which is used to verify zero-knowledge proof
+     * @param _signature Noir based zero-knowledge proof
+     */
+    function isValidSignature(
+        bytes32 _hash,
+        bytes calldata _signature
+    ) public view returns (bytes4 magicValue) {
+        if(verify(_signature, _hash, TxHash, TxVerifier)){
+            return 0x1626ba7e;
+        } else {
+            return 0xffffffff;
+        }
+    }
+
     /**
      * @notice Returns the nonce of the Valerium Wallet
      * @return The nonce
