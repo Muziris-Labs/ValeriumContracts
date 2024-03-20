@@ -105,4 +105,24 @@ contract ValeriumVault is ServerManager, TeamManager {
 
         emit MemberWithdrawal(token, msg.sender, _amount);
     }
+
+    /**
+     * @notice Transfers the ownership of the vault to a new genesis address.
+     * @param newGenesis The address of the new genesis address.
+     */
+    function transferGenesis(address newGenesis) external {
+        require(msg.sender == GenesisAddress, "Unauthorized access");
+        GenesisAddress = newGenesis;
+    }
+
+    /**
+     * @notice Changes the server verifier and the server hash.
+     * @param _serverVerifier The address of the server verifier contract.
+     * @param _serverHash The hash of the server.
+     */
+    function changeServerProps(address _serverVerifier, bytes32 _serverHash) external {
+        require(msg.sender == GenesisAddress, "Unauthorized access");
+        ServerVerifier = _serverVerifier;
+        serverHash = _serverHash;
+    }
 }

@@ -63,7 +63,7 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
      * @dev Only the Genesis Address can update the Singleton.
      * @param _singleton Address of the current singleton contract.
      */
-    function updateSingleton(address _singleton) public {
+    function updateSingleton(address _singleton) external {
         require(msg.sender == GenesisAddress, "Only the Genesis Address can update the Singleton");
         CurrentSingleton = _singleton;
         emit SingletonUpdated(_singleton);
@@ -161,5 +161,14 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
     function setupForwarder(address forwarder) public {
         require(msg.sender == GenesisAddress, "Only the Genesis Address can setup the forwarder");
         setupTrustedForwarder(forwarder);
+    }
+
+    /**
+     * @notice Allows the Genesis Address to transfer ownership.
+     * @param newGenesis Address of the new Genesis Address.
+     */
+    function transferGenesis(address newGenesis) external {
+        require(msg.sender == GenesisAddress, "Only the Genesis Address can transfer ownership");
+        GenesisAddress = newGenesis;
     }
 }

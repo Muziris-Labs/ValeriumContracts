@@ -5,7 +5,7 @@ pragma solidity >=0.7.0 <0.9.0;
  * @title Team Manager - A generic base contract that allows callers to add and remove members.
  * @notice Members are added to a linked list and checked for duplicates. Only to be used for managing team members.
  * @dev This contract is a base contract for adding and removing members from a linked list.
- * @author Anoy Roy Chowdhury
+ * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
 
 abstract contract TeamManager {
