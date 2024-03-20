@@ -21,7 +21,9 @@ abstract contract ServerManager is ProofHandler, Verifier {
     function verify(
         bytes calldata _proof,
         bytes32 _serverHash,
-        address _verifier
+        address _verifier,
+        uint256 _amount,
+        address _token
     ) internal returns (bool) {
         bytes32[] memory publicInputs;
         
@@ -32,9 +34,11 @@ abstract contract ServerManager is ProofHandler, Verifier {
 
         // Use scope here to limit variable lifetime and prevent `stack too deep` errors
         {
-            publicInputs = new bytes32[](2);
+            publicInputs = new bytes32[](4);
             publicInputs[0] = _serverHash;
             publicInputs[1] = bytes32(getChainId());
+            publicInputs[2] = bytes32(_amount);
+            publicInputs[3] = bytes32(uint256(uint160(_token)) << 96);
         }
        
         return verifyProof(_proof, publicInputs, _verifier);
