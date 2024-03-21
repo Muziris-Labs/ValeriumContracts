@@ -37,33 +37,19 @@ abstract contract Executor {
      * @param values Array of Ether values.
      * @param datas Array of data payloads.
      */
-    function batchExecute(address[] memory tos, uint256[] memory values, bytes[] memory datas) internal returns (bool allSuccess){
+    function batchExecute(address[] memory tos, uint256[] memory values, bytes[] memory datas) internal returns (bool success){
         // Ensure that the lengths of the 'tos', 'values', and 'datas' arrays are all the same
         require(tos.length == values.length && tos.length == datas.length, "Array lengths must match");
 
         // Iterate over the 'tos' array
         for (uint i = 0; i < tos.length; i++) {
-            // Start of assembly block
-            assembly {
-                // Load the 'to' address for the current iteration
-                let to := mload(add(tos, mul(add(i, 1), 0x20)))
-                // Load the 'value' amount for the current iteration
-                let value := mload(add(values, mul(add(i, 1), 0x20)))
-                // Calculate the start of the 'data' for the current iteration
-                let data := add(datas, mul(add(i, 1), 0x20))
-                // Load the length of the 'data' for the current iteration
-                let dataLength := mload(add(datas, mul(i, 0x20)))
+            // Execute the call
+            success = execute(tos[i], values[i], datas[i], gasleft());
 
-                // Execute the call and store the success status
-                let result := call(gas(), to, value, data, dataLength, 0, 0)
-
-                // If the call was not successful, revert the transaction
-                switch iszero(result)
-                case 1 {
-                    allSuccess := 0
-                    revert(0, 0)
-                }
-             }
+            // If the call was unsuccessful, break the loop
+            if (!success) {
+                break;
+            }
         }
     }
 }
