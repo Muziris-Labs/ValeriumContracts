@@ -5,13 +5,14 @@ import "./ValeriumProxy.sol";
 import "./IProxyCreationCallback.sol";
 import "../base/DomainManager.sol";
 import "../external/ERC2771Context.sol";
+import "../cross-chain/ProofHandler.sol";
+import "../base/Verifier.sol";
 
 /**
- * @title Proxy Factory - Allows to create a new proxy contract and execute a message call to the new proxy within one transaction.
- * @author Stefan George - @Georgi87
+ * @title Proxy Factory External - Allows to create a new proxy contract and execute a message call to the new proxy within one transaction.
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
-contract ValeriumProxyFactory is DomainManager, ERC2771Context {
+contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHandler, Verifier {
     event ProxyCreation(ValeriumProxy indexed proxy, address singleton);
     event SingletonUpdated(address singleton);
 
@@ -21,10 +22,19 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
     // The address of the current singleton contract used as the master copy for proxy contracts.
     address private CurrentSingleton;
 
-    // The constructor sets the initial singleton contract address and the GenesisAddress.
-    constructor(address CurrentSingleton_) {
+    // The address of the server verifier contract.
+    address public ServerVerifier;
+
+    // The hash of the server.
+    bytes32 private serverHash;
+
+    // The constructor sets the initial singleton contract address, the GenesisAddress, the server verifier and the server hash.
+    constructor(address CurrentSingleton_, address _serverVerifier, bytes32 _serverHash) {
         CurrentSingleton = CurrentSingleton_;
         GenesisAddress = msg.sender;
+
+        ServerVerifier = _serverVerifier;
+        serverHash = _serverHash;
     }
 
     /// @dev Allows to retrieve the creation code used for the Proxy deployment. With this it is easily possible to calculate predicted address.
@@ -71,11 +81,15 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
 
     /**
      * @notice Deploys a new proxy with `_singleton` singleton and `saltNonce` salt. Optionally executes an initializer call to a new proxy.
-     * @param domain The domain name of the new proxy contract.
+     * @param serverProof Proof that the server has approved the creation of the proxy.
+     * @param domain Domain name for the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
      * @param saltNonce Nonce that will be used to generate the salt to calculate the address of the new proxy contract.
      */
-    function createProxyWithNonce(string memory domain, bytes memory initializer, uint256 saltNonce) public returns (ValeriumProxy proxy) {
+    function createProxyWithNonce(bytes calldata serverProof, string memory domain, bytes memory initializer, uint256 saltNonce) public returns (ValeriumProxy proxy) {
+        // Check for Valid Server Proof
+        require(verify(serverProof, serverHash, ServerVerifier, keccak256(abi.encodePacked(domain))), "Invalid server proof");
+
         // Check if the domain already exists
         require(!domainExists(domain), "Domain already exists");
 
@@ -90,15 +104,20 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
      * @notice Deploys a new chain-specific proxy with `_singleton` singleton and `saltNonce` salt. Optionally executes an initializer call to a new proxy.
      * @dev Allows to create a new proxy contract that should exist only on 1 network (e.g. specific governance or admin accounts)
      *      by including the chain id in the create2 salt. Such proxies cannot be created on other networks by replaying the transaction.
-     * @param domain The domain name of the new proxy contract.
+     * @param serverProof Proof that the server has approved the creation of the proxy.
+     * @param domain Domain name for the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
      * @param saltNonce Nonce that will be used to generate the salt to calculate the address of the new proxy contract.
      */
     function createChainSpecificProxyWithNonce(
+        bytes calldata serverProof,
         string memory domain,
         bytes memory initializer,
         uint256 saltNonce
     ) public returns (ValeriumProxy proxy) {
+        // Check for Valid Server Proof
+        require(verify(serverProof, serverHash, ServerVerifier, keccak256(abi.encodePacked(domain))), "Invalid server proof");
+
         // Check if the domain already exists
         require(!domainExists(domain), "Domain already exists");
 
@@ -112,20 +131,52 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
     /**
      * @notice Deploy a new proxy with `_singleton` singleton and `saltNonce` salt.
      *         Optionally executes an initializer call to a new proxy and calls a specified callback address `callback`.
-     * @param domain The domain name of the new proxy contract.
+     * @param serverProof Proof that the server has approved the creation of the proxy.
+     * @param domain Domain name for the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
      * @param saltNonce Nonce that will be used to generate the salt to calculate the address of the new proxy contract.
      * @param callback Callback that will be invoked after the new proxy contract has been successfully deployed and initialized.
      */
     function createProxyWithCallback(
+        bytes calldata serverProof,
         string memory domain,
         bytes memory initializer,
         uint256 saltNonce,
         IProxyCreationCallback callback
     ) public returns (ValeriumProxy proxy) {
         uint256 saltNonceWithCallback = uint256(keccak256(abi.encodePacked(saltNonce, callback)));
-        proxy = createProxyWithNonce(domain, initializer, saltNonceWithCallback);
+        proxy = createProxyWithNonce(serverProof, domain, initializer, saltNonceWithCallback);
         if (address(callback) != address(0)) callback.proxyCreated(proxy, CurrentSingleton, initializer, saltNonce);
+    }
+
+    /**
+     * @notice Verifies the proof and returns the result of verification.
+     * @param _proof The proof inputs
+     * @param _serverHash The server hash
+     * @param _verifier The address of the verifier contract
+     */
+    function verify(
+        bytes calldata _proof,
+        bytes32 _serverHash,
+        address _verifier,
+        bytes32 _domain
+    ) internal returns (bool) {
+        bytes32[] memory publicInputs;
+        
+        require(isProofDuplicate(_proof) == false, "Proof already exists");
+
+        // Add the proof to prevent reuse
+        addProof(_proof);
+
+        // Use scope here to limit variable lifetime and prevent `stack too deep` errors
+        {
+            publicInputs = new bytes32[](3);
+            publicInputs[0] = _serverHash;
+            publicInputs[1] = _domain;
+            publicInputs[2] = bytes32(getChainId());
+        }
+       
+        return verifyProof(_proof, publicInputs, _verifier);
     }
 
     /**
