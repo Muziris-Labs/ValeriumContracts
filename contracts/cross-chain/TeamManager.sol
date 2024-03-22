@@ -61,7 +61,7 @@ abstract contract TeamManager {
      * @param pageSize The size of the page.
      */
     function getMembersPaginated(address start, uint256 pageSize) public view returns (address[] memory array, address next) {
-        require(start == SENTINEL_MEMBER && isMember(start), "Invalid start");
+        require(start != SENTINEL_MEMBER && !isMember(start), "Invalid start");
         require (pageSize != 0, "Invalid page size");
         // Init array with max page size
         array = new address[](pageSize);

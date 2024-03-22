@@ -25,6 +25,7 @@ contract FactoryForwarder is EIP712, Nonces {
     error ERC2771ForwarderExpiredRequest(uint48 deadline);
     error ERC2771UntrustfulTarget(address target, address forwarder);
     error ERC2771ForwarderInvalidSigner(address signer, address from);
+    error DeploymentFailed();
 
     // Initializing the EIP712 Domain Separator
     constructor(string memory name, string memory version) EIP712(name, version) {}
@@ -54,7 +55,7 @@ contract FactoryForwarder is EIP712, Nonces {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_deploy(request, true)) {
-            revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
+            revert DeploymentFailed();
         }
     }
 

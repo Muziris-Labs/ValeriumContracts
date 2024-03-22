@@ -12,6 +12,8 @@ import "./FunctionManager.sol";
 contract ValeriumForwarder is FunctionManager {
     constructor(string memory name, string memory version) FunctionManager(name, version) {}
 
+    error ExecutionFailed();
+
     /**
      * @notice This function is used to execute the "executeWithForwarder" function of the target contract.
      * @param request The struct of forwarded message for "executeWithForwarder" function
@@ -24,7 +26,7 @@ contract ValeriumForwarder is FunctionManager {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_execute(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
+            revert ExecutionFailed();
         }
     }
 
@@ -41,7 +43,7 @@ contract ValeriumForwarder is FunctionManager {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_executeBatch(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
+            revert ExecutionFailed();
         }
     }
 
@@ -58,7 +60,7 @@ contract ValeriumForwarder is FunctionManager {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_executeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
+            revert ExecutionFailed();
         }
     }
 
@@ -74,7 +76,7 @@ contract ValeriumForwarder is FunctionManager {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_changeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ERC2771ForwarderInvalidSigner(request.from, msg.sender);
+            revert ExecutionFailed();
         }
     }
 }

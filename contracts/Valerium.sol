@@ -196,6 +196,9 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns(bool success) {
+        // Verifying the proof
+        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
+
         // Checking if the Valerium Wallet has sufficient balance
         if(token != address(0)){
             require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
@@ -204,8 +207,7 @@ contract Valerium is
         }
 
         uint256 startGas = gasleft();
-        // Verifying the proof
-        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
+    
         // Executing the transaction
         success = execute(to, value, data, gasleft());
 
@@ -240,6 +242,9 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns(bool success){
+        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
+        // Executing the batch transactions
+
         // Calculating the total value of the batch transactions
         if(token != address(0)){
             require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
@@ -249,8 +254,6 @@ contract Valerium is
 
         uint256 startGas = gasleft();
         // Verifying the proof
-        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
-        // Executing the batch transactions
         success = batchExecute(to, value, data);
 
         // Deducting gas fees from the user's Valerium Wallet
@@ -284,6 +287,9 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder {
+        // Verifying the proof
+        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+        
         // Checking if the Valerium Wallet has sufficient balance
         if(token != address(0)){
             require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
@@ -292,8 +298,7 @@ contract Valerium is
         }
 
         uint256 startGas = gasleft();
-        // Verifying the proof
-        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+    
         // Updating the Tx Hash, Tx Verifier and Public Storage
         TxHash = _newTxHash;
         TxVerifier = _newTxVerifier;
@@ -330,6 +335,9 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder {
+        // Verifying the proof
+        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+        
         // Checking if the Valerium Wallet has sufficient balance
         if(token != address(0)){
             require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
@@ -338,8 +346,7 @@ contract Valerium is
         }
 
         uint256 startGas = gasleft();
-        // Verifying the proof
-        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+      
         // Updating the Recovery Hash, Recovery Verifier and Public Storage
         RecoveryHash = _newRecoveryHash;
         RecoveryVerifier = _newRecoveryVerifier;
