@@ -18,18 +18,18 @@ interface IValerium {
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
-     * @return success boolean flag indicating if the call succeeded
+     * @return magicValue The magic value of the transaction
      */
     function executeTxWithForwarder(
-        bytes calldata _proof,
+        bytes calldata _proof, 
         address to, 
-        uint256 value, 
+        uint256 value,
         bytes calldata data, 
         address token,
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) external payable returns(bool success);
+        ) external payable returns(bytes4 magicValue);
 
     /**
      * @notice Executes a batch of transactions with provided parameters using the trusted forwarder
@@ -41,6 +41,7 @@ interface IValerium {
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeBatchTxWithForwarder(
         bytes calldata _proof, 
@@ -51,8 +52,9 @@ interface IValerium {
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) external payable returns(bool success);
+        ) external payable returns(bytes4 magicValue);
 
+   
     /**
      * @notice Executes a recovery transaction to change the transaction hash, transaction verifier and public storage using the trusted forwarder
      * @param _proof The proof input
@@ -63,19 +65,20 @@ interface IValerium {
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeRecoveryWithForwarder(
         bytes calldata _proof, 
         bytes32 _newTxHash, 
-        address _newTxVerifier, 
+        address _newTxVerifier,
         bytes calldata _publicStorage, 
         address token,
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) external payable;
+        ) external payable returns (bytes4 magicValue);
 
-    /**
+   /**
      * @notice Executes a recovery transaction to change the recovery hash, recovery verifier and public storage using the trusted forwarder
      * @param _proof The proof input
      * @param _newRecoveryHash The new recovery hash
@@ -85,17 +88,18 @@ interface IValerium {
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function changeRecoveryWithForwarder(
         bytes calldata _proof, 
         bytes32 _newRecoveryHash, 
         address _newRecoveryVerifier, 
-        bytes calldata _publicStorage,
+        bytes calldata _publicStorage, 
         address token,
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) external payable;
+        ) external payable returns (bytes4 magicValue);
 }
 
 abstract contract FunctionManager is EIP712, Nonces, DataManager {

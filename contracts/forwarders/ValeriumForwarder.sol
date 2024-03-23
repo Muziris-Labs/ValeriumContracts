@@ -12,8 +12,6 @@ import "./FunctionManager.sol";
 contract ValeriumForwarder is FunctionManager {
     constructor(string memory name, string memory version) FunctionManager(name, version) {}
 
-    error ExecutionFailed();
-
     /**
      * @notice This function is used to execute the "executeWithForwarder" function of the target contract.
      * @param request The struct of forwarded message for "executeWithForwarder" function
@@ -22,12 +20,14 @@ contract ValeriumForwarder is FunctionManager {
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
-    function execute(ForwardExecuteData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function execute(ForwardExecuteData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool) {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_execute(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ExecutionFailed();
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -39,12 +39,14 @@ contract ValeriumForwarder is FunctionManager {
      * @param estimatedFees The estimated fees of the transaction
      */
 
-    function executeBatch(ForwardExecuteBatchData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function executeBatch(ForwardExecuteBatchData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool){
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_executeBatch(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ExecutionFailed();
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -56,12 +58,14 @@ contract ValeriumForwarder is FunctionManager {
      * @param estimatedFees The estimated fees of the transaction
      */
 
-    function executeRecovery(ForwardExecuteRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function executeRecovery(ForwardExecuteRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool) {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_executeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ExecutionFailed();
+            return false;
         }
+
+        return true;
     }
 
     /**
@@ -72,12 +76,14 @@ contract ValeriumForwarder is FunctionManager {
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
-    function changeRecovery(ForwardChangeRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual {
+    function changeRecovery(ForwardChangeRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool) {
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
         if (!_changeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            revert ExecutionFailed();
+            return false;
         }
+
+        return true;
     }
 }
 
