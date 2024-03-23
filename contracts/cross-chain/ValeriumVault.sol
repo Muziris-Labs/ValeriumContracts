@@ -93,17 +93,33 @@ contract ValeriumVault is ServerManager, TeamManager {
      * @param token The address of the token to be withdrawn.
      * @param _amount The amount to be withdrawn.
      */
-    function memberWithdrawal (bytes calldata proof, address token, uint256 _amount) external {
-        require(isMember(msg.sender), "Unauthorized access");
-        require(verify(proof, serverHash, ServerVerifier, _amount, token), "Invalid proof");
+    function memberWithdrawal (bytes calldata proof, address token, uint256 _amount) external returns (bool success) {
+        // Check if the sender is a member
+        if(!isMember(msg.sender)){
+            return false;
+        }
 
-        if (token == address(0)) {
+        // Verify the proof
+        if(!verify(proof, serverHash, ServerVerifier, _amount, token)) {
+            return false;
+        }
+
+        // Withdraw the amount
+        if (token == address(0)){
+            if( address(this).balance < _amount){
+                return false;
+            }
             payable(msg.sender).transfer(_amount);
         } else {
-            require(IERC20(token).transfer(msg.sender, _amount), "Transfer failed");
+            try IERC20(token).transfer(msg.sender, _amount) {} 
+            catch {
+                success = false;
+            }
         }
 
         emit MemberWithdrawal(token, msg.sender, _amount);
+
+        success = true;
     }
 
     /**

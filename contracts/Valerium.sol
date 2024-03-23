@@ -225,8 +225,10 @@ contract Valerium is
         }
 
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
-            return INSUFFICIENT_BALANCE;
+        if(token != address(0)){
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+                return INSUFFICIENT_BALANCE;
+            }
         } else {
             if((address(this).balance < estimatedFees)){
                 return INSUFFICIENT_BALANCE;
@@ -282,8 +284,10 @@ contract Valerium is
         }
 
         // Calculating the total value of the batch transactions
-        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
-            return INSUFFICIENT_BALANCE;
+        if(token != address(0)){
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+                return INSUFFICIENT_BALANCE;
+            }
         } else {
             if(address(this).balance < estimatedFees){
                 return INSUFFICIENT_BALANCE;
@@ -339,8 +343,10 @@ contract Valerium is
         }
         
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
-            return INSUFFICIENT_BALANCE;
+        if(token != address(0)){
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+                return INSUFFICIENT_BALANCE;
+            }
         } else {
             if(address(this).balance < estimatedFees){
                 return INSUFFICIENT_BALANCE;
@@ -397,8 +403,10 @@ contract Valerium is
         }
         
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
-            return INSUFFICIENT_BALANCE;
+        if(token != address(0)){
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+                return INSUFFICIENT_BALANCE;
+            }
         } else {
             if(address(this).balance < estimatedFees){
                 return INSUFFICIENT_BALANCE;
