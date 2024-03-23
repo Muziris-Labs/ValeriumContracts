@@ -44,25 +44,30 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
 
     /**
      * @notice Internal method to create a new proxy contract using CREATE2. Optionally executes an initializer call to a new proxy.
+     * @dev WARNING : The Transaction will not fail if a valid proof is given for avoid replay attacks.
      * @param initializer (Optional) Payload for a message call to be sent to a new proxy contract.
      * @param salt Create2 salt to use for calculating the address of the new proxy contract.
      * @return proxy Address of the new proxy contract.
      */
     function deployProxy(bytes memory initializer, bytes32 salt) internal returns (ValeriumProxy proxy) {
-        require(isContract(CurrentSingleton), "Singleton contract not deployed");
+        if(!isContract(CurrentSingleton)){
+            return ValeriumProxy(payable(address(0)));
+        }   
 
         bytes memory deploymentData = abi.encodePacked(type(ValeriumProxy).creationCode, uint256(uint160(CurrentSingleton)));
         // solhint-disable-next-line no-inline-assembly
         assembly {
             proxy := create2(0x0, add(0x20, deploymentData), mload(deploymentData), salt)
         }
-        require(address(proxy) != address(0), "Create2 call failed");
+        if(address(proxy) == address(0)){
+            return ValeriumProxy(payable(address(0)));
+        }
 
         if (initializer.length > 0) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
                 if eq(call(gas(), proxy, 0, add(initializer, 0x20), mload(initializer), 0, 0), 0) {
-                    revert(0, 0)
+                    proxy := 0
                 }
             }
         }
@@ -81,6 +86,7 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
 
     /**
      * @notice Deploys a new proxy with `_singleton` singleton and `saltNonce` salt. Optionally executes an initializer call to a new proxy.
+     * @dev WARNING : The Transaction will not fail if a valid proof is given for avoid replay attacks.
      * @param serverProof Proof that the server has approved the creation of the proxy.
      * @param domain Domain name for the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
@@ -91,11 +97,18 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
         require(verify(serverProof, serverHash, ServerVerifier, keccak256(abi.encodePacked(domain))), "Invalid server proof");
 
         // Check if the domain already exists
-        require(!domainExists(domain), "Domain already exists");
+        if(domainExists(domain)){
+            return ValeriumProxy(payable(address(0)));
+        }
 
         // If the initializer or domain changes the proxy address should change too. Hashing the initializer data is cheaper than just concatinating it
         bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), keccak256(initializer), saltNonce));
         proxy = deployProxy(initializer, salt);
+
+        if(address(proxy) == address(0)){
+            return ValeriumProxy(payable(address(0)));
+        }
+
         addDomain(domain, address(proxy));
         emit ProxyCreation(proxy, CurrentSingleton);
     }
@@ -104,6 +117,7 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
      * @notice Deploys a new chain-specific proxy with `_singleton` singleton and `saltNonce` salt. Optionally executes an initializer call to a new proxy.
      * @dev Allows to create a new proxy contract that should exist only on 1 network (e.g. specific governance or admin accounts)
      *      by including the chain id in the create2 salt. Such proxies cannot be created on other networks by replaying the transaction.
+     *      WARNING : The Transaction will not fail if a valid proof is given for avoid replay attacks.
      * @param serverProof Proof that the server has approved the creation of the proxy.
      * @param domain Domain name for the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
@@ -119,11 +133,18 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
         require(verify(serverProof, serverHash, ServerVerifier, keccak256(abi.encodePacked(domain))), "Invalid server proof");
 
         // Check if the domain already exists
-        require(!domainExists(domain), "Domain already exists");
+        if(domainExists(domain)){
+            return ValeriumProxy(payable(address(0)));
+        }
 
         // If the initializer or domain changes the proxy address should change too. Hashing the initializer data is cheaper than just concatinating it
         bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), keccak256(initializer), saltNonce, getChainId()));
         proxy = deployProxy(initializer, salt);
+
+        if(address(proxy) == address(0)){
+            return ValeriumProxy(payable(address(0)));
+        }
+
         addDomain(domain, address(proxy));
         emit ProxyCreation(proxy, CurrentSingleton);
     }
