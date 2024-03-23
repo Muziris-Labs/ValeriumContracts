@@ -8,6 +8,7 @@ import "./base/ProofManager.sol";
 import "./handler/TokenCallbackHandler.sol";
 import "./external/ERC2771Context.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./base/LogManager.sol";
 
 /**
  * @title Valerium - A Smart Contract Wallet powered by ZK-SNARKs with support for Cross-Chain Transactions
@@ -29,7 +30,8 @@ contract Valerium is
     Executor,
     ProofManager,
     TokenCallbackHandler,
-    ERC2771Context
+    ERC2771Context,
+    LogManager
 {
     string public constant VERSION = "1.0.0";
 
@@ -99,18 +101,23 @@ contract Valerium is
      * @param to The address of the receiver
      * @param value The amount of Ether to send
      * @param data The data payload
-     * @return success boolean flag indicating if the call succeeded
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeTx (
         bytes calldata _proof, 
         address to, 
         uint256 value, 
         bytes calldata data
-        ) public payable notTrustedForwarder returns(bool success) {
+        ) public payable notTrustedForwarder returns(bytes4) {
         // Verifying the proof
-        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+            return INVALID_PROOF;
+        }
         // Executing the transaction
-        success = execute(to, value, data, gasleft());
+        if(!execute(to, value, data, gasleft())) {
+            return UNEXPECTED_ERROR;
+        }
+        return EXECUTION_SUCCESSFUL;
     }
     
     /**
@@ -119,17 +126,23 @@ contract Valerium is
      * @param to Array of destination addresses
      * @param value Array of Ether values
      * @param data Array of data payloads
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeBatchTx (
         bytes calldata _proof, 
         address[] calldata to, 
         uint256[] calldata value, 
         bytes[] calldata data
-        ) public payable notTrustedForwarder {
+        ) public payable notTrustedForwarder returns (bytes4){
         // Verifying the proof
-        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)) {
+            return INVALID_PROOF;
+        }
         // Executing the batch transactions
-        batchExecute(to, value, data);
+        if(!batchExecute(to, value, data)) {
+            return UNEXPECTED_ERROR;
+        }
+        return EXECUTION_SUCCESSFUL;
     }
 
     /**
@@ -138,19 +151,24 @@ contract Valerium is
      * @param _newTxHash The new transaction hash
      * @param _newTxVerifier The address of the new transaction verifier
      * @param _publicStorage The new public storage
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeRecovery(
         bytes calldata _proof, 
         bytes32 _newTxHash, 
         address _newTxVerifier, 
         bytes calldata _publicStorage
-        ) public payable notTrustedForwarder {
+        ) public payable notTrustedForwarder returns(bytes4) {
         // Verifying the proof
-        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            return INVALID_PROOF;
+        }
         // Updating the Tx Hash, Tx Verifier and Public Storage
         TxHash = _newTxHash;
         TxVerifier = _newTxVerifier;
         PublicStorage = _publicStorage;
+
+        return RECOVERY_SUCCESSFUL;
     }   
 
     /**
@@ -159,19 +177,24 @@ contract Valerium is
      * @param _newRecoveryHash The new recovery hash
      * @param _newRecoveryVerifier The address of the new recovery verifier
      * @param _publicStorage The new public storage
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function changeRecovery(
         bytes calldata _proof, 
         bytes32 _newRecoveryHash, 
         address _newRecoveryVerifier, 
         bytes calldata _publicStorage
-        ) public payable notTrustedForwarder {
+        ) public payable notTrustedForwarder returns (bytes4) {
         // Verifying the proof
-        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            return INVALID_PROOF;
+        }
         // Updating the Recovery Hash, Recovery Verifier and Public Storage
         RecoveryHash = _newRecoveryHash;
         RecoveryVerifier = _newRecoveryVerifier;
         PublicStorage = _publicStorage;
+
+        return CHANGE_SUCCESSFUL;
     }
 
     /**
@@ -184,7 +207,7 @@ contract Valerium is
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
-     * @return success boolean flag indicating if the call succeeded
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeTxWithForwarder(
         bytes calldata _proof, 
@@ -195,29 +218,39 @@ contract Valerium is
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) public payable onlyTrustedForwarder returns(bool success) {
+        ) public payable onlyTrustedForwarder returns(bytes4 magicValue) {
         // Verifying the proof
-        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+            return INVALID_PROOF;
+        }
 
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0)){
-            require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
+        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
+            return INSUFFICIENT_BALANCE;
         } else {
-            require(address(this).balance + value >= estimatedFees, "Valerium: insufficient balance");
+            if((address(this).balance < estimatedFees)){
+                return INSUFFICIENT_BALANCE;
+            }
         }
 
         uint256 startGas = gasleft();
-    
+        magicValue = EXECUTION_SUCCESSFUL;
+
         // Executing the transaction
-        success = execute(to, value, data, gasleft());
+        if(!execute(to, value, data, gasleft())){
+            magicValue = UNEXPECTED_ERROR;
+        }
 
         // Deducting gas fees from the user's Valerium Wallet
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-            IERC20(token).transfer(GasTank, gasFee);
+           try IERC20(token).transfer(GasTank, gasFee) {}
+           catch { return TRANSFER_FAILED; }
         } else {
-            execute(GasTank, gasFee, "", gasleft());
+            if(!execute(GasTank, gasFee, "", gasleft())){
+                return TRANSFER_FAILED;
+            }
         }
     }
 
@@ -231,6 +264,7 @@ contract Valerium is
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeBatchTxWithForwarder(
         bytes calldata _proof, 
@@ -241,28 +275,39 @@ contract Valerium is
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) public payable onlyTrustedForwarder returns(bool success){
-        require(verify(_proof, _useNonce(), TxHash, TxVerifier), "Valerium: invalid proof");
-        // Executing the batch transactions
+        ) public payable onlyTrustedForwarder returns(bytes4 magicValue){
+        // Verifying the proof
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+            return INVALID_PROOF;
+        }
 
         // Calculating the total value of the batch transactions
-        if(token != address(0)){
-            require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
+        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
+            return INSUFFICIENT_BALANCE;
         } else {
-            require(address(this).balance >= estimatedFees, "Valerium: insufficient balance");
+            if(address(this).balance < estimatedFees){
+                return INSUFFICIENT_BALANCE;
+            }
         }
 
         uint256 startGas = gasleft();
-        // Verifying the proof
-        success = batchExecute(to, value, data);
+        magicValue = EXECUTION_SUCCESSFUL;
+
+        // Executing the batch transactions
+        if (batchExecute(to, value, data)) {
+            magicValue = UNEXPECTED_ERROR;
+        }
 
         // Deducting gas fees from the user's Valerium Wallet
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-            IERC20(token).transfer(GasTank, gasFee);
+           try IERC20(token).transfer(GasTank, gasFee) {}
+           catch { return TRANSFER_FAILED; }
         } else {
-            execute(GasTank, gasFee, "", gasleft());
+            if(!execute(GasTank, gasFee, "", gasleft())){
+                return TRANSFER_FAILED;
+            }
         }
     }
 
@@ -276,6 +321,7 @@ contract Valerium is
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function executeRecoveryWithForwarder(
         bytes calldata _proof, 
@@ -286,15 +332,19 @@ contract Valerium is
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) public payable onlyTrustedForwarder {
+        ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
         // Verifying the proof
-        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            return INVALID_PROOF;
+        }
         
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0)){
-            require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
+        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
+            return INSUFFICIENT_BALANCE;
         } else {
-            require(address(this).balance >= estimatedFees, "Valerium: insufficient balance");
+            if(address(this).balance < estimatedFees){
+                return INSUFFICIENT_BALANCE;
+            }
         }
 
         uint256 startGas = gasleft();
@@ -308,10 +358,15 @@ contract Valerium is
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-            IERC20(token).transfer(GasTank, gasFee);
+           try IERC20(token).transfer(GasTank, gasFee) {}
+           catch { return TRANSFER_FAILED; }
         } else {
-            execute(GasTank, gasFee, "", gasleft());
+            if(!execute(GasTank, gasFee, "", gasleft())){
+                return TRANSFER_FAILED;
+            }
         }
+
+        return RECOVERY_SUCCESSFUL;
     }
 
     /**
@@ -324,6 +379,7 @@ contract Valerium is
      * @param gasPrice The gas price
      * @param baseGas The base gas
      * @param estimatedFees The estimated fees
+     * @return magicValue bytes4 indicating the status of the execution
      */
     function changeRecoveryWithForwarder(
         bytes calldata _proof, 
@@ -334,15 +390,19 @@ contract Valerium is
         uint256 gasPrice, 
         uint256 baseGas, 
         uint256 estimatedFees
-        ) public payable onlyTrustedForwarder {
+        ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
         // Verifying the proof
-        require(verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier), "Valerium: invalid proof");
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            return INVALID_PROOF;
+        }
         
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0)){
-            require(IERC20(token).balanceOf(address(this)) >= estimatedFees, "Valerium: insufficient balance");
+        if(token != address(0) && IERC20(token).balanceOf(address(this)) < estimatedFees){
+            return INSUFFICIENT_BALANCE;
         } else {
-            require(address(this).balance >= estimatedFees, "Valerium: insufficient balance");
+            if(address(this).balance < estimatedFees){
+                return INSUFFICIENT_BALANCE;
+            }
         }
 
         uint256 startGas = gasleft();
@@ -356,10 +416,15 @@ contract Valerium is
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-            IERC20(token).transfer(GasTank, gasFee);
+           try IERC20(token).transfer(GasTank, gasFee) {}
+           catch { return TRANSFER_FAILED; }
         } else {
-            execute(GasTank, gasFee, "", gasleft());
+            if(!execute(GasTank, gasFee, "", gasleft())){
+                return TRANSFER_FAILED;
+            }
         }
+
+        return CHANGE_SUCCESSFUL;
     }
 
 
