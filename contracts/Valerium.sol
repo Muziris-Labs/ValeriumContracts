@@ -110,10 +110,8 @@ contract Valerium is
         uint256 value, 
         bytes calldata data
         ) public payable notTrustedForwarder returns(bytes4) {
-        _useNonce();
-
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, TxHash, TxVerifier)){
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
             return INVALID_PROOF;
         }
         // Executing the transaction
@@ -136,11 +134,9 @@ contract Valerium is
         address[] calldata to, 
         uint256[] calldata value, 
         bytes[] calldata data
-        ) public payable notTrustedForwarder returns (bytes4){
-        _useNonce();
-        
+        ) public payable notTrustedForwarder returns (bytes4){        
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, TxHash, TxVerifier)) {
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)) {
             return INVALID_PROOF;
         }
         // Executing the batch transactions
@@ -164,10 +160,8 @@ contract Valerium is
         address _newTxVerifier, 
         bytes calldata _publicStorage
         ) public payable notTrustedForwarder returns(bytes4) {
-        _useNonce();
-
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
             return INVALID_PROOF;
         }
         // Updating the Tx Hash, Tx Verifier and Public Storage
@@ -192,10 +186,8 @@ contract Valerium is
         address _newRecoveryVerifier, 
         bytes calldata _publicStorage
         ) public payable notTrustedForwarder returns (bytes4) {
-        _useNonce();
-
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
             return INVALID_PROOF;
         }
         // Updating the Recovery Hash, Recovery Verifier and Public Storage
@@ -228,10 +220,8 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns(bytes4 magicValue) {
-        _useNonce();
-
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, TxHash, TxVerifier)){
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
             return INVALID_PROOF;
         }
 
@@ -289,10 +279,8 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns(bytes4 magicValue){
-        _useNonce();
-
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, TxHash, TxVerifier)){
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
             return INVALID_PROOF;
         }
 
@@ -350,10 +338,8 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
-        _useNonce();
-
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
             return INVALID_PROOF;
         }
         
@@ -412,10 +398,8 @@ contract Valerium is
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
-        _useNonce();
-
         // Verifying the proof
-        if(!verify(_proof, nonce - 1, RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
             return INVALID_PROOF;
         }
         
