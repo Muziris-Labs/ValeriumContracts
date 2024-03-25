@@ -246,4 +246,15 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
         require(msg.sender == GenesisAddress, "Only the Genesis Address can transfer ownership");
         GenesisAddress = newGenesis;
     }
+
+    /**
+     * @notice Allows the Genesis Address to change server properties.
+     * @param _serverVerifier Address of the server verifier contract.
+     * @param _serverHash Hash of the server.
+     */
+    function changeServerProps(address _serverVerifier, bytes32 _serverHash) external {
+        require(msg.sender == GenesisAddress, "Only the Genesis Address can change server properties");
+        ServerVerifier = _serverVerifier;
+        serverHash = _serverHash;
+    }
 }

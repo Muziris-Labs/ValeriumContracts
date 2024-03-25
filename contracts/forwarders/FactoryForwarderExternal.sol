@@ -18,7 +18,7 @@ interface IValeriumProxyFactory {
     function createProxyWithNonce(bytes calldata serverProof, string memory domain, bytes memory initializer, uint256 saltNonce) external;
 }
 
-contract FactoryForwarder is EIP712, Nonces {
+contract FactoryForwarderExternal is EIP712, Nonces {
     using ECDSA for bytes32;
 
     error ERC2771ForwarderMismatchedValue(uint256 requestedValue, uint256 msgValue);
