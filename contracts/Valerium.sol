@@ -44,8 +44,8 @@ contract Valerium is
     address public RecoveryVerifier;
 
     // The hash used as a public inputs for verifiers
-    bytes32 private TxHash;
-    bytes32 private RecoveryHash;
+    bytes32 public TxHash;
+    bytes32 public RecoveryHash;
 
     // The address of the gas tank contract
     address public GasTank;

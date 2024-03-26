@@ -94,7 +94,7 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
      */
     function createProxyWithNonce(bytes calldata serverProof, string memory domain, bytes memory initializer, uint256 saltNonce) public returns (ValeriumProxy proxy) {
         // Check for Valid Server Proof
-        require(verify(serverProof, serverHash, ServerVerifier, keccak256(abi.encodePacked(domain))), "Invalid server proof");
+        require(verify(serverProof, serverHash, ServerVerifier, bytes4(keccak256(abi.encodePacked(domain)))), "Invalid server proof");
 
         // Check if the domain already exists
         if(domainExists(domain)){
@@ -130,7 +130,7 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
         uint256 saltNonce
     ) public returns (ValeriumProxy proxy) {
         // Check for Valid Server Proof
-        require(verify(serverProof, serverHash, ServerVerifier, keccak256(abi.encodePacked(domain))), "Invalid server proof");
+        require(verify(serverProof, serverHash, ServerVerifier, bytes4(keccak256(abi.encodePacked(domain)))), "Invalid server proof");
 
         // Check if the domain already exists
         if(domainExists(domain)){
@@ -180,7 +180,7 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
         bytes calldata _proof,
         bytes32 _serverHash,
         address _verifier,
-        bytes32 _domain
+        bytes4 _domain
     ) internal returns (bool) {
         bytes32[] memory publicInputs;
         
@@ -193,7 +193,7 @@ contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHan
         {
             publicInputs = new bytes32[](3);
             publicInputs[0] = _serverHash;
-            publicInputs[1] = _domain;
+            publicInputs[1] = bytes32(uint256(uint32(_domain)));
             publicInputs[2] = bytes32(getChainId());
         }
        
