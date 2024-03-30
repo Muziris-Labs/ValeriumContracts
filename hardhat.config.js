@@ -25,10 +25,15 @@ module.exports = {
       url: `https://replicator.pegasus.lightlink.io/rpc/v1`,
       accounts: [PRIVATE_KEY],
     },
+    opSepolia: {
+      url: `https://sepolia.optimism.io/`,
+      accounts: [PRIVATE_KEY],
+    },
   },
   etherscan: {
     apiKey: {
       pegasus: "your API key",
+      opSepolia: "89K6NC1QZIUZSA6A6S5SY1N3DVIBCJCD3A",
     },
     customChains: [
       {
@@ -37,6 +42,14 @@ module.exports = {
         urls: {
           apiURL: "https://pegasus.lightlink.io/api",
           browserURL: "https://pegasus.lightlink.io/",
+        },
+      },
+      {
+        network: "opSepolia",
+        chainId: 11155420,
+        urls: {
+          apiURL: "https://api-sepolia-optimistic.etherscan.io/api",
+          browserURL: "https://sepolia-optimism.etherscan.io/",
         },
       },
     ],

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./ServerManager.sol";
 import "./TeamManager.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 
@@ -12,7 +11,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol";
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
 
-contract ValeriumVault is ServerManager, TeamManager {
+contract ValeriumVault is TeamManager {
 
     event DepositReceived(address indexed token, address indexed sender, uint256 amount);
     event GenesisWithdrawal(address indexed token, uint256 amount);
@@ -20,22 +19,16 @@ contract ValeriumVault is ServerManager, TeamManager {
 
     // The address of the account that initially created the vault contract.
     address private GenesisAddress;
-    
-    // The address of the server verifier contract.
-    address public ServerVerifier;
 
-    // The hash of the server.
-    bytes32 private serverHash;
+    // The maximum withdrawal amount allowed in the vault by members.
+    uint256 private maxWithdrawAmount = 0;
 
     /**
-     * @notice Initializes the contract with the server verifier and the server hash.
-     * @param _serverVerifier The address of the server verifier contract.
-     * @param _serverHash The hash of the server.
+     * @notice Initializes the contract with the address of the genesis account and maxDeposit.
      */
-    constructor (address _serverVerifier, bytes32 _serverHash) {
+    constructor (uint256 _maxWithdrawAmount) {
         GenesisAddress = msg.sender;
-        ServerVerifier = _serverVerifier;
-        serverHash = _serverHash;
+        maxWithdrawAmount = _maxWithdrawAmount;
     }
 
     /**
@@ -67,6 +60,20 @@ contract ValeriumVault is ServerManager, TeamManager {
         }
         emit GenesisWithdrawal(token, _amount);
     }
+    
+    /**
+     * @notice Withdraws all the tokens from the vault to the genesis address.
+     * @param token The address of the token to be withdrawn.
+     */
+    function withdrawAll (address token) external {
+        require(msg.sender == GenesisAddress, "Unauthorized access");
+        if (token == address(0)) {
+            payable(msg.sender).transfer(address(this).balance);
+        } else {
+            IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
+        }
+        emit GenesisWithdrawal(token, IERC20(token).balanceOf(address(this)));
+    }
 
     /**
      * @notice Adds a team member to the vault.
@@ -89,37 +96,25 @@ contract ValeriumVault is ServerManager, TeamManager {
 
     /**
      * @notice Withdraws the token from the vault to the member address.
-     * @param proof The proof inputs
      * @param token The address of the token to be withdrawn.
      * @param _amount The amount to be withdrawn.
      */
-    function memberWithdrawal (bytes calldata proof, address token, uint256 _amount) external returns (bool success) {
+    function memberWithdrawal (address token, uint256 _amount) external {
         // Check if the sender is a member
-        if(!isMember(msg.sender)){
-            return false;
-        }
+        require(isMember(msg.sender), "Unauthorized access");
 
-        // Verify the proof
-        if(!verify(proof, serverHash, ServerVerifier, _amount, token)) {
-            return false;
-        }
+        // Check if the amount is less than the maximum withdrawal amount
+        require(_amount <= maxWithdrawAmount, "Invalid amount");
 
         // Withdraw the amount
         if (token == address(0)){
-            if( address(this).balance < _amount){
-                return false;
-            }
+            require(_amount <= address(this).balance, "Insufficient balance");
             payable(msg.sender).transfer(_amount);
         } else {
-            try IERC20(token).transfer(msg.sender, _amount) {} 
-            catch {
-                success = false;
-            }
+            IERC20(token).transfer(msg.sender, _amount); 
         }
 
         emit MemberWithdrawal(token, msg.sender, _amount);
-
-        success = true;
     }
 
     /**
@@ -132,13 +127,11 @@ contract ValeriumVault is ServerManager, TeamManager {
     }
 
     /**
-     * @notice Changes the server verifier and the server hash.
-     * @param _serverVerifier The address of the server verifier contract.
-     * @param _serverHash The hash of the server.
+     * @notice Changes the maximum withdrawal amount allowed in the vault by members.
+     * @param _maxWithdrawAmount The new maximum withdrawal amount.
      */
-    function changeServerProps(address _serverVerifier, bytes32 _serverHash) external {
+    function changeMaxWithdrawAmount(uint256 _maxWithdrawAmount) external {
         require(msg.sender == GenesisAddress, "Unauthorized access");
-        ServerVerifier = _serverVerifier;
-        serverHash = _serverHash;
+        maxWithdrawAmount = _maxWithdrawAmount;
     }
 }

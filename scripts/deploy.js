@@ -14,9 +14,9 @@ async function main() {
   const counter = await hre.ethers.deployContract(
     "ValeriumProxyFactoryExternal",
     [
-      "0x0560f6B73E570b4eCD2018E4AC450E773E60bED5",
-      "0x3558a0038F42C2d9bcb8D16583c11eCEC88AbC13",
-      "0x1018d42fbf6e24010d82c55b9bc035083ace81eac84048154dd46bb37019d1ac",
+      "0x2fAF5856C60C14730fd7594684C2C7d52097f440",
+      "0xcbd8EF2d15E11fC65793e693d7D11e918fAfa5D6",
+      "0x29ade2f10be65feb865342a6565e9855b8f94e9dd4b8872437c74fd9fb55e39e",
     ]
   );
 

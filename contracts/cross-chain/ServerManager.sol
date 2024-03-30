@@ -8,6 +8,7 @@ import "../base/Verifier.sol";
  * @title Server Manager - This contract is used to verify if the server is calling the designated function.
  * @notice Proofs are added to a linked list and checked for duplicates. Only to be used for verifying server proofs.
  * @dev This contract is a base contract for adding,checking & verifying server proofs.
+ * @notice Not used for initial implementation.
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
 */
 
