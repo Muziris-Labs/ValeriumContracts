@@ -11,14 +11,9 @@ async function main() {
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  const counter = await hre.ethers.deployContract(
-    "ValeriumProxyFactoryExternal",
-    [
-      "0x2fAF5856C60C14730fd7594684C2C7d52097f440",
-      "0xcbd8EF2d15E11fC65793e693d7D11e918fAfa5D6",
-      "0x29ade2f10be65feb865342a6565e9855b8f94e9dd4b8872437c74fd9fb55e39e",
-    ]
-  );
+  const counter = await hre.ethers.deployContract("ValeriumVault", [
+    "1000000000000000000",
+  ]);
 
   console.log("Contract address:", await counter.getAddress());
 }

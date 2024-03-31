@@ -16,6 +16,7 @@ contract ValeriumVault is TeamManager {
     event DepositReceived(address indexed token, address indexed sender, uint256 amount);
     event GenesisWithdrawal(address indexed token, uint256 amount);
     event MemberWithdrawal(address indexed token, address indexed member, uint256 amount);
+    event WithdrawAllGenesis(address indexed token);
 
     // The address of the account that initially created the vault contract.
     address private GenesisAddress;
@@ -23,12 +24,16 @@ contract ValeriumVault is TeamManager {
     // The maximum withdrawal amount allowed in the vault by members.
     uint256 private maxWithdrawAmount = 0;
 
+    // The snapshot time of the wallet.
+    uint256 public snapshotTime;
+
     /**
      * @notice Initializes the contract with the address of the genesis account and maxDeposit.
      */
     constructor (uint256 _maxWithdrawAmount) {
         GenesisAddress = msg.sender;
         maxWithdrawAmount = _maxWithdrawAmount;
+        snapshotTime = block.timestamp;
     }
 
     /**
@@ -72,7 +77,7 @@ contract ValeriumVault is TeamManager {
         } else {
             IERC20(token).transfer(msg.sender, IERC20(token).balanceOf(address(this)));
         }
-        emit GenesisWithdrawal(token, IERC20(token).balanceOf(address(this)));
+        emit WithdrawAllGenesis(token);
     }
 
     /**
@@ -115,6 +120,14 @@ contract ValeriumVault is TeamManager {
         }
 
         emit MemberWithdrawal(token, msg.sender, _amount);
+    }
+
+    /**
+     * @notice Updates the snapshot time of the vault.
+     */
+    function updateSnapshotTime() external {
+        require(msg.sender == GenesisAddress || isMember(msg.sender), "Unauthorized access");
+        snapshotTime = block.timestamp;
     }
 
     /**
