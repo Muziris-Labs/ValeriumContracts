@@ -3,7 +3,7 @@ pragma solidity >=0.7.0 <0.9.0;
 
 /**
  * @title IProxy - Helper interface to access the singleton address of the Proxy on-chain.
- * @author Richard Meissner - @rmeissner
+ * @author Richard Meissner - <richard@gnosis.io>
  */
 interface IProxy {
     function masterCopy() external view returns (address);

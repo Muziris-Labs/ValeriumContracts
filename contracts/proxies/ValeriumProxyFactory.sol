@@ -8,7 +8,6 @@ import "../external/ERC2771Context.sol";
 
 /**
  * @title Proxy Factory - Allows to create a new proxy contract and execute a message call to the new proxy within one transaction.
- * @author Stefan George - @Georgi87
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
 contract ValeriumProxyFactory is DomainManager, ERC2771Context {

@@ -8,7 +8,7 @@ import "../interfaces/IERC165.sol";
 
 /**
  * @title Default Callback Handler - Handles supported tokens' callbacks, allowing Safes receiving these tokens.
- * @author Richard Meissner - @rmeissner
+ * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
 contract TokenCallbackHandler is ERC1155TokenReceiver, ERC777TokensRecipient, ERC721TokenReceiver, IERC165 {
     /**

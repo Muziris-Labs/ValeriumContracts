@@ -11,9 +11,7 @@ async function main() {
 
   console.log("Deploying contracts with the account:", deployer.address);
 
-  const counter = await hre.ethers.deployContract("ValeriumVault", [
-    "1000000000000000000",
-  ]);
+  const counter = await hre.ethers.deployContract("UltraVerifier");
 
   console.log("Contract address:", await counter.getAddress());
 }
