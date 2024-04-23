@@ -227,7 +227,8 @@ contract Valerium is
 
         // Checking if the Valerium Wallet has sufficient balance
         if(token != address(0)){
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+            uint8 decimals = IERC20(token).decimals();
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
                 return INSUFFICIENT_BALANCE;
             }
         } else {
@@ -248,7 +249,8 @@ contract Valerium is
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-           try IERC20(token).transfer(GasTank, gasFee) {}
+           uint8 decimals = IERC20(token).decimals();
+           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
            catch { return TRANSFER_FAILED; }
         } else {
             if(!execute(GasTank, gasFee, "", gasleft())){
@@ -286,7 +288,8 @@ contract Valerium is
 
         // Calculating the total value of the batch transactions
         if(token != address(0)){
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+            uint8 decimals = IERC20(token).decimals();
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
                 return INSUFFICIENT_BALANCE;
             }
         } else {
@@ -307,7 +310,8 @@ contract Valerium is
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-           try IERC20(token).transfer(GasTank, gasFee) {}
+           uint8 decimals = IERC20(token).decimals();
+           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
            catch { return TRANSFER_FAILED; }
         } else {
             if(!execute(GasTank, gasFee, "", gasleft())){
@@ -345,7 +349,8 @@ contract Valerium is
         
         // Checking if the Valerium Wallet has sufficient balance
         if(token != address(0)){
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+            uint8 decimals = IERC20(token).decimals();
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
                 return INSUFFICIENT_BALANCE;
             }
         } else {
@@ -365,7 +370,8 @@ contract Valerium is
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-           try IERC20(token).transfer(GasTank, gasFee) {}
+           uint8 decimals = IERC20(token).decimals();
+           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
            catch { return TRANSFER_FAILED; }
         } else {
             if(!execute(GasTank, gasFee, "", gasleft())){
@@ -405,7 +411,8 @@ contract Valerium is
         
         // Checking if the Valerium Wallet has sufficient balance
         if(token != address(0)){
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees){
+            uint8 decimals = IERC20(token).decimals();
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
                 return INSUFFICIENT_BALANCE;
             }
         } else {
@@ -425,7 +432,8 @@ contract Valerium is
         uint256 gasUsed = startGas - gasleft();
         uint256 gasFee = (gasUsed + baseGas) * gasPrice;
         if(token != address(0)){
-           try IERC20(token).transfer(GasTank, gasFee) {}
+           uint8 decimals = IERC20(token).decimals();
+           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
            catch { return TRANSFER_FAILED; }
         } else {
             if(!execute(GasTank, gasFee, "", gasleft())){
