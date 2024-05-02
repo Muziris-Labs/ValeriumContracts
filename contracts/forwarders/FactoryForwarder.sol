@@ -2,15 +2,17 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../external/ERC2771Context.sol";
+import "../external/Valerium2771Context.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
+import "./FactoryLogManager.sol";
+import "./ServerHandler.sol";
 
 /**
  * @title FactoryForwarder - A contract that forwards transactions to a ValeriumFactory Contract.
  * @notice This contract is specifically designed to be used with the Valerium Factory Contract, 
  *         and some function may not work as expected if used with other contracts. To be used
- *         to deploy Valerium Waller through Valerium Factory Contract.
+ *         to deploy Valerium Wallet through Valerium Factory Contract.
  * @author Anoy Roy Chwodhury - <anoyroyc3545@gmail.com>
  */
 
@@ -18,17 +20,28 @@ interface IValeriumProxyFactory {
     function createProxyWithNonce(string memory domain, bytes memory initializer, uint256 saltNonce) external;
 }
 
-contract FactoryForwarder is EIP712, Nonces {
+contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
     using ECDSA for bytes32;
 
-    error ERC2771ForwarderMismatchedValue(uint256 requestedValue, uint256 msgValue);
-    error ERC2771ForwarderExpiredRequest(uint48 deadline);
-    error ERC2771UntrustfulTarget(address target, address forwarder);
-    error ERC2771ForwarderInvalidSigner(address signer, address from);
-    error DeploymentFailed();
+    event DeploymentResult(bytes4 result);
+
+    // isBase is used to check if the contract is in base chain
+    bool immutable isBase;
 
     // Initializing the EIP712 Domain Separator
-    constructor(string memory name, string memory version) EIP712(name, version) {}
+    constructor(string memory name, string memory version, bool _isBase) EIP712(name, version) {
+        isBase = _isBase;
+    }
+
+    /**
+     * @dev Modfier to check if the proof is valid (only for non-base chain)
+     */
+    modifier checkBase (bytes calldata serverProof, bytes4 domain) {
+        if(!isBase) {
+            require(verify(serverProof, serverHash, ServerVerifier, domain), "ValeriumForwarder: invalid serverProof");
+        }
+        _;
+    }
 
     // struct of forwarded message for "createProxyWithNonce" function
     struct ForwardDeployData {
@@ -51,12 +64,13 @@ contract FactoryForwarder is EIP712, Nonces {
      * @notice This function is used to execute the "createProxyWithNonce" function of the target contract.
      * @param request The struct of forwarded message for "createProxyWithNonce" function
      */
-    function execute(ForwardDeployData calldata request) public payable virtual {
+    function execute(bytes calldata serverProof, ForwardDeployData calldata request) 
+        checkBase (serverProof,  bytes4(keccak256(abi.encodePacked(request.domain)))) 
+        public payable virtual returns (bytes4) {
+
         require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
 
-        if (!_deploy(request, true)) {
-            revert DeploymentFailed();
-        }
+        return _deploy(request, true);
     }
 
 
@@ -68,22 +82,25 @@ contract FactoryForwarder is EIP712, Nonces {
     function _deploy(
         ForwardDeployData calldata request,
         bool requireValidRequest
-    ) internal virtual returns (bool success){
+    ) internal virtual returns (bytes4 magicValue){
         (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
 
         // Need to explicitly specify if a revert is required since non-reverting is default for
         // batches and reversion is opt-in since it could be useful in some scenarios
         if (requireValidRequest) {
             if (!isTrustedForwarder) {
-                revert ERC2771UntrustfulTarget(request.recipient, address(this));
+                emit DeploymentResult(UNTRUSTFUL_TARGET);
+                return UNTRUSTFUL_TARGET;
             }
 
             if (!active) {
-                revert ERC2771ForwarderExpiredRequest(request.deadline);
+                emit DeploymentResult(EXPIRED_REQUEST);
+                return EXPIRED_REQUEST;
             }
 
             if (!signerMatch) {
-                revert ERC2771ForwarderInvalidSigner(signer, request.from);
+                emit DeploymentResult(INVALID_SIGNER);
+                return INVALID_SIGNER;
             }
         }
 
@@ -92,11 +109,26 @@ contract FactoryForwarder is EIP712, Nonces {
             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
-            IValeriumProxyFactory(request.recipient).createProxyWithNonce(request.domain, request.initializer, request.salt);
+            if(!_checkForwardedGas(gasleft(), request.gas)) {
+                emit DeploymentResult(INSUFFICIENT_BALANCE);
+                return INSUFFICIENT_BALANCE;
+            }
 
-            _checkForwardedGas(gasleft(), request);
+            (bool success, ) = address(request.recipient).call{gas : request.gas}(
+                abi.encodeWithSelector(
+                    IValeriumProxyFactory.createProxyWithNonce.selector,
+                    request.domain,
+                    request.initializer,
+                    request.salt
+                )
+            );
 
-            return true;
+            if (!success) {
+                emit DeploymentResult(DEPLOYMENT_FAILED);
+                return DEPLOYMENT_FAILED;
+            }
+
+            return DEPLOYMENT_SUCCESSFUL;
         }
     }
 
@@ -151,39 +183,13 @@ contract FactoryForwarder is EIP712, Nonces {
     /**
      * Checks if the gas forwarded is sufficient
      * @param gasLeft gas left after the forwarding
-     * @param request ForwardChangeRecoveryData struct
+     * @param requestGas gas requested for the forwarding
      */
-    function _checkForwardedGas(uint256 gasLeft, ForwardDeployData calldata request) private pure {
-        // To avoid insufficient gas griefing attacks, as referenced in https://ronan.eth.limo/blog/ethereum-gas-dangers/
-        //
-        // A malicious relayer can attempt to shrink the gas forwarded so that the underlying call reverts out-of-gas
-        // but the forwarding itself still succeeds. In order to make sure that the subcall received sufficient gas,
-        // we will inspect gasleft() after the forwarding.
-        //
-        // Let X be the gas available before the subcall, such that the subcall gets at most X * 63 / 64.
-        // We can't know X after CALL dynamic costs, but we want it to be such that X * 63 / 64 >= req.gas.
-        // Let Y be the gas used in the subcall. gasleft() measured immediately after the subcall will be gasleft() = X - Y.
-        // If the subcall ran out of gas, then Y = X * 63 / 64 and gasleft() = X - Y = X / 64.
-        // Under this assumption req.gas / 63 > gasleft() is true is true if and only if
-        // req.gas / 63 > X / 64, or equivalently req.gas > X * 63 / 64.
-        // This means that if the subcall runs out of gas we are able to detect that insufficient gas was passed.
-        //
-        // We will now also see that req.gas / 63 > gasleft() implies that req.gas >= X * 63 / 64.
-        // The contract guarantees Y <= req.gas, thus gasleft() = X - Y >= X - req.gas.
-        // -    req.gas / 63 > gasleft()
-        // -    req.gas / 63 >= X - req.gas
-        // -    req.gas >= X * 63 / 64
-        // In other words if req.gas < X * 63 / 64 then req.gas / 63 <= gasleft(), thus if the relayer behaves honestly
-        // the forwarding does not revert.
-        if (gasLeft < request.gas / 63) {
-            // We explicitly trigger invalid opcode to consume all gas and bubble-up the effects, since
-            // neither revert or assert consume all gas since Solidity 0.8.20
-            // https://docs.soliditylang.org/en/v0.8.20/control-structures.html#panic-via-assert-and-error-via-require
-            /// @solidity memory-safe-assembly
-            assembly {
-                invalid()
-            }
+    function _checkForwardedGas(uint256 gasLeft, uint256 requestGas) private pure returns (bool success) {
+        if (gasLeft >= requestGas + (requestGas / 64)) {
+            return false;
         }
+        return true;
     }
 
      /**
@@ -191,18 +197,13 @@ contract FactoryForwarder is EIP712, Nonces {
      * @param target address of the target contract
      */
     function _isTrustedByTarget(address target) private view returns (bool) {
-        bytes memory encodedParams = abi.encodeCall(ERC2771Context.isTrustedForwarder, (address(this)));
+        bytes memory encodedParams = abi.encodeCall(Valerium2771Context.isTrustedForwarder, (address(this)));
 
         bool success;
         uint256 returnSize;
         uint256 returnValue;
         /// @solidity memory-safe-assembly
         assembly {
-            // Perform the staticcal and save the result in the scratch space.
-            // | Location  | Content  | Content (Hex)                                                      |
-            // |-----------|----------|--------------------------------------------------------------------|
-            // |           |          |                                                           result ↓ |
-            // | 0x00:0x1F | selector | 0x0000000000000000000000000000000000000000000000000000000000000001 |
             success := staticcall(gas(), target, add(encodedParams, 0x20), mload(encodedParams), 0, 0x20)
             returnSize := returndatasize()
             returnValue := mload(0)

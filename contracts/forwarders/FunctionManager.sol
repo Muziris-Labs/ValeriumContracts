@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./DataManager.sol";
-import "../external/ERC2771Context.sol";
+import "../external/Valerium2771Context.sol";
 
 interface IValerium {
     /**
@@ -920,7 +920,7 @@ abstract contract FunctionManager is EIP712, Nonces, DataManager {
      * @param target address of the target contract
      */
     function _isTrustedByTarget(address target) private view returns (bool) {
-        bytes memory encodedParams = abi.encodeCall(ERC2771Context.isTrustedForwarder, (address(this)));
+        bytes memory encodedParams = abi.encodeCall(Valerium2771Context.isTrustedForwarder, (address(this)));
 
         bool success;
         uint256 returnSize;

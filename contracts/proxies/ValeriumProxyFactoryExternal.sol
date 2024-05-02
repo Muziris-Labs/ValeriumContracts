@@ -4,15 +4,16 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ValeriumProxy.sol";
 import "./IProxyCreationCallback.sol";
 import "../base/DomainManager.sol";
-import "../external/ERC2771Context.sol";
+import "../external/Valerium2771Context.sol";
 import "../cross-chain/ProofHandler.sol";
 import "../base/Verifier.sol";
 
 /**
  * @title Proxy Factory External - Allows to create a new proxy contract and execute a message call to the new proxy within one transaction.
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
+ * @dev DEPRECATED: This contract is deprecated and will be removed in future versions. Use ValeriumProxyFactory instead.
  */
-contract ValeriumProxyFactoryExternal is DomainManager, ERC2771Context, ProofHandler, Verifier {
+contract ValeriumProxyFactoryExternal is DomainManager, Valerium2771Context, ProofHandler, Verifier {
     event ProxyCreation(ValeriumProxy indexed proxy, address singleton);
     event SingletonUpdated(address singleton);
 

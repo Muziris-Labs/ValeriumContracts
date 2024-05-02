@@ -4,13 +4,15 @@ pragma solidity >=0.7.0 <0.9.0;
 import "./ValeriumProxy.sol";
 import "./IProxyCreationCallback.sol";
 import "../base/DomainManager.sol";
-import "../external/ERC2771Context.sol";
+import "../external/Valerium2771Context.sol";
+import "../cross-chain/ProofHandler.sol";
+import "../base/Verifier.sol";
 
 /**
  * @title Proxy Factory - Allows to create a new proxy contract and execute a message call to the new proxy within one transaction.
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
-contract ValeriumProxyFactory is DomainManager, ERC2771Context {
+contract ValeriumProxyFactory is DomainManager, Valerium2771Context, ProofHandler, Verifier {
     event ProxyCreation(ValeriumProxy indexed proxy, address singleton);
     event SingletonUpdated(address singleton);
 
@@ -20,10 +22,24 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
     // The address of the current singleton contract used as the master copy for proxy contracts.
     address private CurrentSingleton;
 
+    // Is the contract deployed on the base chain.
+    bool immutable IsBaseChain;
+
     // The constructor sets the initial singleton contract address and the GenesisAddress.
-    constructor(address CurrentSingleton_) {
+    constructor(address CurrentSingleton_, bool _isBaseChain) {
         CurrentSingleton = CurrentSingleton_;
         GenesisAddress = msg.sender;
+        IsBaseChain = _isBaseChain;
+    }
+
+    /**
+     * @notice  Modifier to restrict the execution of a function to the base chain. If the contract is not deployed on the base chain, the function can only be called by the trusted forwarder.
+     */
+    modifier checkBase {
+        if (!IsBaseChain) {
+            require(msg.sender == trustedForwarder(), "Only the trusted forwarder can call this function");
+        }
+        _;
     }
 
     /// @dev Allows to retrieve the creation code used for the Proxy deployment. With this it is easily possible to calculate predicted address.
@@ -74,7 +90,7 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
      * @param initializer Payload for a message call to be sent to a new proxy contract.
      * @param saltNonce Nonce that will be used to generate the salt to calculate the address of the new proxy contract.
      */
-    function createProxyWithNonce(string memory domain, bytes memory initializer, uint256 saltNonce) public returns (ValeriumProxy proxy) {
+    function createProxyWithNonce(string memory domain, bytes memory initializer, uint256 saltNonce) checkBase public returns (ValeriumProxy proxy) {
         // Check if the domain already exists
         require(!domainExists(domain), "Domain already exists");
 
@@ -97,7 +113,7 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
         string memory domain,
         bytes memory initializer,
         uint256 saltNonce
-    ) public returns (ValeriumProxy proxy) {
+    ) checkBase public returns (ValeriumProxy proxy) {
         // Check if the domain already exists
         require(!domainExists(domain), "Domain already exists");
 
@@ -121,7 +137,7 @@ contract ValeriumProxyFactory is DomainManager, ERC2771Context {
         bytes memory initializer,
         uint256 saltNonce,
         IProxyCreationCallback callback
-    ) public returns (ValeriumProxy proxy) {
+    ) checkBase public returns (ValeriumProxy proxy) {
         uint256 saltNonceWithCallback = uint256(keccak256(abi.encodePacked(saltNonce, callback)));
         proxy = createProxyWithNonce(domain, initializer, saltNonceWithCallback);
         if (address(callback) != address(0)) callback.proxyCreated(proxy, CurrentSingleton, initializer, saltNonce);

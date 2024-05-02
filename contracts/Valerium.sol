@@ -6,7 +6,7 @@ import "./common/StorageAccessible.sol";
 import "./base/Executor.sol";
 import "./base/ProofManager.sol";
 import "./handler/TokenCallbackHandler.sol";
-import "./external/ERC2771Context.sol";
+import "./external/Valerium2771Context.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./base/LogManager.sol";
 
@@ -31,8 +31,7 @@ contract Valerium is
     Executor,
     ProofManager,
     TokenCallbackHandler,
-    ERC2771Context,
-    LogManager
+    Valerium2771Context
 {
     string public constant VERSION = "1.0.0";
 
@@ -55,6 +54,21 @@ contract Valerium is
 
     // The nonce for the Valerium Wallet
     uint256 private nonce;
+
+    event SetupValerium(
+        bytes32 domain,
+        address txVerifier,
+        address recoveryVerifier,
+        address forwarder,
+        address gasTank,
+        bytes32 txHash,
+        bytes32 recoveryHash,
+        bytes publicStorage
+    );
+
+    event ExecutionResult(
+        bytes4 magicValue
+    );
 
     /**
      * @notice Initializes the Valerium Wallet with the domain and the verifier contracts
@@ -94,6 +108,17 @@ contract Valerium is
         TxHash = _txHash;
         RecoveryHash = _recoveryHash;
         PublicStorage = _publicStorage;
+
+        emit SetupValerium(
+            _domain,
+            _txVerifier,
+            _recoveryVerifier,
+            _forwarder,
+            _gasTank,
+            _txHash,
+            _recoveryHash,
+            _publicStorage
+        );
     }
 
     /**
@@ -112,12 +137,15 @@ contract Valerium is
         ) public payable notTrustedForwarder returns(bytes4) {
         // Verifying the proof
         if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
         // Executing the transaction
         if(!execute(to, value, data, gasleft())) {
+            emit ExecutionResult(UNEXPECTED_ERROR);
             return UNEXPECTED_ERROR;
         }
+        emit ExecutionResult(EXECUTION_SUCCESSFUL);
         return EXECUTION_SUCCESSFUL;
     }
     
@@ -137,12 +165,15 @@ contract Valerium is
         ) public payable notTrustedForwarder returns (bytes4){        
         // Verifying the proof
         if(!verify(_proof, _useNonce(), TxHash, TxVerifier)) {
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
         // Executing the batch transactions
         if(!batchExecute(to, value, data)) {
+            emit ExecutionResult(UNEXPECTED_ERROR);
             return UNEXPECTED_ERROR;
         }
+        emit ExecutionResult(EXECUTION_SUCCESSFUL);
         return EXECUTION_SUCCESSFUL;
     }
 
@@ -162,6 +193,7 @@ contract Valerium is
         ) public payable notTrustedForwarder returns(bytes4) {
         // Verifying the proof
         if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
         // Updating the Tx Hash, Tx Verifier and Public Storage
@@ -169,6 +201,7 @@ contract Valerium is
         TxVerifier = _newTxVerifier;
         PublicStorage = _publicStorage;
 
+        emit ExecutionResult(RECOVERY_SUCCESSFUL);
         return RECOVERY_SUCCESSFUL;
     }   
 
@@ -188,6 +221,7 @@ contract Valerium is
         ) public payable notTrustedForwarder returns (bytes4) {
         // Verifying the proof
         if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
         // Updating the Recovery Hash, Recovery Verifier and Public Storage
@@ -195,6 +229,7 @@ contract Valerium is
         RecoveryVerifier = _newRecoveryVerifier;
         PublicStorage = _publicStorage;
 
+        emit ExecutionResult(CHANGE_SUCCESSFUL);
         return CHANGE_SUCCESSFUL;
     }
 
@@ -222,22 +257,18 @@ contract Valerium is
         ) public payable onlyTrustedForwarder returns(bytes4 magicValue) {
         // Verifying the proof
         if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
 
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0)){
-            uint8 decimals = IERC20(token).decimals();
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
-                return INSUFFICIENT_BALANCE;
-            }
-        } else {
-            if((address(this).balance < estimatedFees)){
-                return INSUFFICIENT_BALANCE;
-            }
+        if(!checkBalance(token, estimatedFees)){
+            emit ExecutionResult(INSUFFICIENT_BALANCE);
+            return INSUFFICIENT_BALANCE;
         }
 
         uint256 startGas = gasleft();
+
         magicValue = EXECUTION_SUCCESSFUL;
 
         // Executing the transaction
@@ -246,17 +277,8 @@ contract Valerium is
         }
 
         // Deducting gas fees from the user's Valerium Wallet
-        uint256 gasUsed = startGas - gasleft();
-        uint256 gasFee = (gasUsed + baseGas) * gasPrice;
-        if(token != address(0)){
-           uint8 decimals = IERC20(token).decimals();
-           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
-           catch { return TRANSFER_FAILED; }
-        } else {
-            if(!execute(GasTank, gasFee, "", gasleft())){
-                return TRANSFER_FAILED;
-            }
-        }
+        magicValue = chargeFees(startGas, gasPrice, baseGas, GasTank, token, magicValue);
+        emit ExecutionResult(magicValue);
     }
 
     /**
@@ -283,22 +305,18 @@ contract Valerium is
         ) public payable onlyTrustedForwarder returns(bytes4 magicValue){
         // Verifying the proof
         if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
 
         // Calculating the total value of the batch transactions
-        if(token != address(0)){
-            uint8 decimals = IERC20(token).decimals();
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
-                return INSUFFICIENT_BALANCE;
-            }
-        } else {
-            if(address(this).balance < estimatedFees){
-                return INSUFFICIENT_BALANCE;
-            }
+        if (checkBalance(token, estimatedFees) == false) {
+            emit ExecutionResult(INSUFFICIENT_BALANCE);
+            return INSUFFICIENT_BALANCE;
         }
 
         uint256 startGas = gasleft();
+
         magicValue = EXECUTION_SUCCESSFUL;
 
         // Executing the batch transactions
@@ -307,17 +325,8 @@ contract Valerium is
         }
 
         // Deducting gas fees from the user's Valerium Wallet
-        uint256 gasUsed = startGas - gasleft();
-        uint256 gasFee = (gasUsed + baseGas) * gasPrice;
-        if(token != address(0)){
-           uint8 decimals = IERC20(token).decimals();
-           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
-           catch { return TRANSFER_FAILED; }
-        } else {
-            if(!execute(GasTank, gasFee, "", gasleft())){
-                return TRANSFER_FAILED;
-            }
-        }
+        magicValue = chargeFees(startGas, gasPrice, baseGas, GasTank, token, magicValue);
+        emit ExecutionResult(magicValue);
     }
 
     /**
@@ -348,15 +357,8 @@ contract Valerium is
         }
         
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0)){
-            uint8 decimals = IERC20(token).decimals();
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
-                return INSUFFICIENT_BALANCE;
-            }
-        } else {
-            if(address(this).balance < estimatedFees){
-                return INSUFFICIENT_BALANCE;
-            }
+        if (!checkBalance(token, estimatedFees)) {
+            return INSUFFICIENT_BALANCE;
         }
 
         uint256 startGas = gasleft();
@@ -367,19 +369,8 @@ contract Valerium is
         PublicStorage = _publicStorage;
 
         // Deducting gas fees from the user's Valerium Wallet
-        uint256 gasUsed = startGas - gasleft();
-        uint256 gasFee = (gasUsed + baseGas) * gasPrice;
-        if(token != address(0)){
-           uint8 decimals = IERC20(token).decimals();
-           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
-           catch { return TRANSFER_FAILED; }
-        } else {
-            if(!execute(GasTank, gasFee, "", gasleft())){
-                return TRANSFER_FAILED;
-            }
-        }
-
-        return RECOVERY_SUCCESSFUL;
+        magicValue = chargeFees(startGas, gasPrice, baseGas, GasTank, token, RECOVERY_SUCCESSFUL);
+        emit ExecutionResult(magicValue);
     }
 
     /**
@@ -410,15 +401,8 @@ contract Valerium is
         }
         
         // Checking if the Valerium Wallet has sufficient balance
-        if(token != address(0)){
-            uint8 decimals = IERC20(token).decimals();
-            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
-                return INSUFFICIENT_BALANCE;
-            }
-        } else {
-            if(address(this).balance < estimatedFees){
-                return INSUFFICIENT_BALANCE;
-            }
+       if (!checkBalance(token, estimatedFees)) {
+            return INSUFFICIENT_BALANCE;
         }
 
         uint256 startGas = gasleft();
@@ -429,19 +413,28 @@ contract Valerium is
         PublicStorage = _publicStorage;
 
         // Deducting gas fees from the user's Valerium Wallet
-        uint256 gasUsed = startGas - gasleft();
-        uint256 gasFee = (gasUsed + baseGas) * gasPrice;
+        magicValue = chargeFees(startGas, gasPrice, baseGas, GasTank, token, CHANGE_SUCCESSFUL);
+        emit ExecutionResult(magicValue);
+    }
+
+    /**
+     * @notice Checks if the Valerium Wallet has sufficient balance
+     * @param token  The address of the token, if the address is 0x0, it is an Ether transaction
+     * @param estimatedFees The estimated fees of the transaction
+     */
+    function checkBalance(address token, uint256 estimatedFees) public view returns (bool) {
         if(token != address(0)){
-           uint8 decimals = IERC20(token).decimals();
-           try IERC20(token).transfer(GasTank, gasFee / 10 ** (18 - decimals)) {}
-           catch { return TRANSFER_FAILED; }
+            uint8 decimals = IERC20(token).decimals();
+            if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
+                return false;
+            }
         } else {
-            if(!execute(GasTank, gasFee, "", gasleft())){
-                return TRANSFER_FAILED;
+            if(address(this).balance < estimatedFees){
+                return false;
             }
         }
 
-        return CHANGE_SUCCESSFUL;
+        return true;
     }
 
 

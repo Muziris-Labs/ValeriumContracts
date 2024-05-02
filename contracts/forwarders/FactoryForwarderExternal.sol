@@ -2,7 +2,7 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "../external/ERC2771Context.sol";
+import "../external/Valerium2771Context.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
 
@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/utils/Nonces.sol";
  * @notice This contract is specifically designed to be used with the Valerium Factory Contract, 
  *         and some function may not work as expected if used with other contracts. To be used
  *         to deploy Valerium Waller through Valerium Factory Contract.
+ * @dev DEPRECATED: This contract is deprecated and will be removed in future versions. Use FactoryForwarder instead.
  * @author Anoy Roy Chwodhury - <anoyroyc3545@gmail.com>
  */
 
@@ -193,7 +194,7 @@ contract FactoryForwarderExternal is EIP712, Nonces {
      * @param target address of the target contract
      */
     function _isTrustedByTarget(address target) private view returns (bool) {
-        bytes memory encodedParams = abi.encodeCall(ERC2771Context.isTrustedForwarder, (address(this)));
+        bytes memory encodedParams = abi.encodeCall(Valerium2771Context.isTrustedForwarder, (address(this)));
 
         bool success;
         uint256 returnSize;
