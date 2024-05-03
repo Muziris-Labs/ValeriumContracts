@@ -67,11 +67,10 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
      */
     function execute(bytes calldata serverProof, ForwardDeployData calldata request) 
         checkBase (serverProof,  bytes4(keccak256(abi.encodePacked(request.domain)))) 
-        public payable virtual returns (bytes4) {
+        public payable virtual returns (bytes4 magicValue) {
 
-        require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
-
-        return _deploy(request, true);
+        magicValue = _deploy(request, true);
+        emit DeploymentResult(magicValue);
     }
 
 
@@ -90,17 +89,14 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
         // batches and reversion is opt-in since it could be useful in some scenarios
         if (requireValidRequest) {
             if (!isTrustedForwarder) {
-                emit DeploymentResult(UNTRUSTFUL_TARGET);
                 return UNTRUSTFUL_TARGET;
             }
 
             if (!active) {
-                emit DeploymentResult(EXPIRED_REQUEST);
                 return EXPIRED_REQUEST;
             }
 
             if (!signerMatch) {
-                emit DeploymentResult(INVALID_SIGNER);
                 return INVALID_SIGNER;
             }
         }
@@ -111,7 +107,6 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
             _useNonce(signer);
 
             if(!_checkForwardedGas(gasleft(), request.gas)) {
-                emit DeploymentResult(INSUFFICIENT_BALANCE);
                 return INSUFFICIENT_BALANCE;
             }
 
@@ -125,7 +120,6 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
             );
 
             if (!success) {
-                emit DeploymentResult(DEPLOYMENT_FAILED);
                 return DEPLOYMENT_FAILED;
             }
 
