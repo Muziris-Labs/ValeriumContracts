@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "./DataManager.sol";
+import "./lib/DataManager.sol";
 import "../external/Valerium2771Context.sol";
 
 interface IValerium {
@@ -101,6 +101,13 @@ interface IValerium {
         uint256 estimatedFees
         ) external payable returns (bytes4 magicValue);
 }
+
+/**
+ * @title FunctionManager
+ * @notice This contract is used to manage the execution of transactions and batches using the trusted forwarder
+ * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
+ * @dev DEPRECATED: This contract is deprecated and will be removed in future versions. Use the ValeriumForwarder contract instead.
+ */
 
 abstract contract FunctionManager is EIP712, Nonces, DataManager {
     using ECDSA for bytes32;

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.7.0 <0.9.0;
 
-import "./FunctionManager.sol";
+import "./lib/ExecuteHandler.sol";
+import "../cross-chain/ProofHandler.sol";
 
 /**
  * @title ValeriumForwarder - A contract that forwards transactions to a target contract.
@@ -9,8 +10,10 @@ import "./FunctionManager.sol";
  * @author Anoy Roy Chwodhury - <anoyroyc3545@gmail.com>
  */
 
-contract ValeriumForwarder is FunctionManager {
-    constructor(string memory name, string memory version) FunctionManager(name, version) {}
+contract ValeriumForwarder is ExecuteHandler, ProofHandler {
+    constructor(string memory name, string memory version) ExecuteHandler(name, version) {}
+
+    event ForwarderResult(bytes4 result);
 
     /**
      * @notice This function is used to execute the "executeWithForwarder" function of the target contract.
@@ -20,14 +23,17 @@ contract ValeriumForwarder is FunctionManager {
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
-    function execute(ForwardExecuteData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool) {
-        require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
+    function execute(
+        ForwardExecuteData calldata request, 
+        address token, 
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) public payable virtual returns (bytes4 magicValue) {
+        addProof(request.proof);
 
-        if (!_execute(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            return false;
-        }
-
-        return true;
+        magicValue = _execute(request, token, gasPrice, baseGas, estimatedFees, true);
+        emit ForwarderResult(magicValue);
     }
 
     /**
@@ -39,14 +45,17 @@ contract ValeriumForwarder is FunctionManager {
      * @param estimatedFees The estimated fees of the transaction
      */
 
-    function executeBatch(ForwardExecuteBatchData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool){
-        require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
+    function executeBatch(
+        ForwardExecuteBatchData calldata request, 
+        address token, 
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) public payable virtual returns (bytes4 magicValue){
+        addProof(request.proof);
 
-        if (!_executeBatch(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            return false;
-        }
-
-        return true;
+        magicValue = _executeBatch(request, token, gasPrice, baseGas, estimatedFees, true);
+        emit ForwarderResult(magicValue);
     }
 
     /**
@@ -58,14 +67,17 @@ contract ValeriumForwarder is FunctionManager {
      * @param estimatedFees The estimated fees of the transaction
      */
 
-    function executeRecovery(ForwardExecuteRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool) {
-        require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
+    function executeRecovery(
+        ForwardExecuteRecoveryData calldata request, 
+        address token,
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) public payable virtual returns (bytes4 magicValue) {
+        addProof(request.proof);
 
-        if (!_executeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            return false;
-        }
-
-        return true;
+        magicValue = _executeRecovery(request, token, gasPrice, baseGas, estimatedFees, true);
+        emit ForwarderResult(magicValue);
     }
 
     /**
@@ -76,14 +88,17 @@ contract ValeriumForwarder is FunctionManager {
      * @param baseGas The base gas of the transaction
      * @param estimatedFees The estimated fees of the transaction
      */
-    function changeRecovery(ForwardChangeRecoveryData calldata request, address token, uint256 gasPrice, uint256 baseGas, uint256 estimatedFees) public payable virtual returns (bool) {
-        require(msg.value == 0, "ValeriumForwarder: invalid msg.value");
+    function changeRecovery(
+        ForwardChangeRecoveryData calldata request, 
+        address token, 
+        uint256 gasPrice, 
+        uint256 baseGas, 
+        uint256 estimatedFees
+        ) public payable virtual returns (bytes4 magicValue) {
+        addProof(request.proof);
 
-        if (!_changeRecovery(request, token, gasPrice, baseGas, estimatedFees, true)) {
-            return false;
-        }
-
-        return true;
+        magicValue = _changeRecovery(request, token, gasPrice, baseGas, estimatedFees, true);
+        emit ForwarderResult(magicValue);
     }
 }
 

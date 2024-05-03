@@ -6,7 +6,8 @@ import "../external/Valerium2771Context.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/Nonces.sol";
 import "./FactoryLogManager.sol";
-import "./ServerHandler.sol";
+import "./lib/ServerHandler.sol";
+import "./lib/TargetChecker.sol";
 
 /**
  * @title FactoryForwarder - A contract that forwards transactions to a ValeriumFactory Contract.
@@ -147,7 +148,7 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
         (bool isValid, address recovered) = _recoverForwardSigner(request);
 
         return (
-            _isTrustedByTarget(request.recipient),
+            TargetChecker._isTrustedByTarget(request.recipient),
             request.deadline >= block.timestamp,
             isValid && recovered == request.from,
             recovered
@@ -190,26 +191,6 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
             return false;
         }
         return true;
-    }
-
-     /**
-     * Checks if the forwarder is trusted by the target
-     * @param target address of the target contract
-     */
-    function _isTrustedByTarget(address target) private view returns (bool) {
-        bytes memory encodedParams = abi.encodeCall(Valerium2771Context.isTrustedForwarder, (address(this)));
-
-        bool success;
-        uint256 returnSize;
-        uint256 returnValue;
-        /// @solidity memory-safe-assembly
-        assembly {
-            success := staticcall(gas(), target, add(encodedParams, 0x20), mload(encodedParams), 0, 0x20)
-            returnSize := returndatasize()
-            returnValue := mload(0)
-        }
-
-        return success && returnSize >= 0x20 && returnValue > 0;
     }
 }
 

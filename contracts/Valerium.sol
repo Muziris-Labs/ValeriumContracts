@@ -353,11 +353,13 @@ contract Valerium is
         ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
         // Verifying the proof
         if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
         
         // Checking if the Valerium Wallet has sufficient balance
         if (!checkBalance(token, estimatedFees)) {
+            emit ExecutionResult(INSUFFICIENT_BALANCE);
             return INSUFFICIENT_BALANCE;
         }
 
@@ -397,11 +399,13 @@ contract Valerium is
         ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
         // Verifying the proof
         if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+            emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
         
         // Checking if the Valerium Wallet has sufficient balance
        if (!checkBalance(token, estimatedFees)) {
+            emit ExecutionResult(INSUFFICIENT_BALANCE);
             return INSUFFICIENT_BALANCE;
         }
 
