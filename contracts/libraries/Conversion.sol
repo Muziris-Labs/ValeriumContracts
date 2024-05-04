@@ -26,15 +26,19 @@ library Conversion {
      * @param _message The bytes32 message to be converted
      * @param _hash The bytes32 hash to be converted
      * @return byte32Inputs The array of padded bytes32 values
+     * @param _addr The address to be converted
      */
-    function convertToInputs(bytes32 _message, bytes32 _hash) internal pure returns (bytes32 [] memory){
-        bytes32[] memory byte32Inputs = new bytes32[](33);
+    function convertToInputs(bytes32 _message, bytes32 _hash, address _addr) internal pure returns (bytes32 [] memory){
+        bytes32[] memory byte32Inputs = new bytes32[](34);
         // Convert the message to padded bytes32 values
         for (uint256 i = 0; i < 32; i++) {
             byte32Inputs[i] = convertToPaddedByte32(_message[i]);
         }
         // Append the hash to the array of padded bytes32 values
         byte32Inputs[32] = _hash;
+
+        // Convert the address to padded bytes32 values
+        byte32Inputs[33] = bytes32(uint256(uint160(_addr)));
 
         return byte32Inputs;
     }

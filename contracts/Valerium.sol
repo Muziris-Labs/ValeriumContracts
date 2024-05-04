@@ -136,7 +136,7 @@ contract Valerium is
         bytes calldata data
         ) public payable notTrustedForwarder returns(bytes4) {
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier, msg.sender)){
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -164,7 +164,7 @@ contract Valerium is
         bytes[] calldata data
         ) public payable notTrustedForwarder returns (bytes4){        
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)) {
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier, msg.sender)) {
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -192,7 +192,7 @@ contract Valerium is
         bytes calldata _publicStorage
         ) public payable notTrustedForwarder returns(bytes4) {
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier, msg.sender)){
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -220,7 +220,7 @@ contract Valerium is
         bytes calldata _publicStorage
         ) public payable notTrustedForwarder returns (bytes4) {
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier, msg.sender)){
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -236,6 +236,7 @@ contract Valerium is
     /**
      * @notice Executes a transaction with provided parameters using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param to The address of the receiver
      * @param value The amount of Ether to send
      * @param data The data payload
@@ -247,6 +248,7 @@ contract Valerium is
      */
     function executeTxWithForwarder(
         bytes calldata _proof, 
+        address from,
         address to, 
         uint256 value,
         bytes calldata data, 
@@ -256,7 +258,7 @@ contract Valerium is
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns(bytes4 magicValue) {
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier, from)){
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -284,6 +286,7 @@ contract Valerium is
     /**
      * @notice Executes a batch of transactions with provided parameters using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param to Array of destination addresses
      * @param value Array of Ether values
      * @param data Array of data payloads
@@ -295,6 +298,7 @@ contract Valerium is
      */
     function executeBatchTxWithForwarder(
         bytes calldata _proof, 
+        address from,
         address[] calldata to, 
         uint256[] calldata value, 
         bytes[] calldata data, 
@@ -304,7 +308,7 @@ contract Valerium is
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns(bytes4 magicValue){
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), TxHash, TxVerifier)){
+        if(!verify(_proof, _useNonce(), TxHash, TxVerifier, from)){
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -332,6 +336,7 @@ contract Valerium is
     /**
      * @notice Executes a recovery transaction to change the transaction hash, transaction verifier and public storage using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param _newTxHash The new transaction hash
      * @param _newTxVerifier The address of the new transaction verifier
      * @param _publicStorage The new public storage
@@ -343,6 +348,7 @@ contract Valerium is
      */
     function executeRecoveryWithForwarder(
         bytes calldata _proof, 
+        address from, 
         bytes32 _newTxHash, 
         address _newTxVerifier,
         bytes calldata _publicStorage, 
@@ -352,7 +358,7 @@ contract Valerium is
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier, from)){
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -378,6 +384,7 @@ contract Valerium is
     /**
      * @notice Executes a recovery transaction to change the recovery hash, recovery verifier and public storage using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param _newRecoveryHash The new recovery hash
      * @param _newRecoveryVerifier The address of the new recovery verifier
      * @param _publicStorage The new public storage
@@ -389,6 +396,7 @@ contract Valerium is
      */
     function changeRecoveryWithForwarder(
         bytes calldata _proof, 
+        address from,
         bytes32 _newRecoveryHash, 
         address _newRecoveryVerifier, 
         bytes calldata _publicStorage, 
@@ -398,7 +406,7 @@ contract Valerium is
         uint256 estimatedFees
         ) public payable onlyTrustedForwarder returns (bytes4 magicValue){
         // Verifying the proof
-        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier)){
+        if(!verify(_proof, _useNonce(), RecoveryHash, RecoveryVerifier, from)){
             emit ExecutionResult(INVALID_PROOF);
             return INVALID_PROOF;
         }
@@ -453,7 +461,7 @@ contract Valerium is
         bytes32 _hash,
         bytes calldata _signature
     ) public view returns (bytes4 magicValue) {
-        if(verify(_signature, _hash, TxHash, TxVerifier)){
+        if(verify(_signature, _hash, TxHash, TxVerifier, address(this))){
             return 0x1626ba7e;
         } else {
             return 0xffffffff;

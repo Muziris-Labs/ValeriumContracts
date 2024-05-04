@@ -37,9 +37,9 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
     /**
      * @dev Modfier to check if the proof is valid (only for non-base chain)
      */
-    modifier checkBase (bytes calldata serverProof, bytes4 domain) {
+    modifier checkBase (bytes calldata serverProof, bytes4 domain, address from) {
         if(!isBase) {
-            require(verify(serverProof, serverHash, ServerVerifier, domain), "ValeriumForwarder: invalid serverProof");
+            require(verify(serverProof, serverHash, ServerVerifier, domain, from ), "ValeriumForwarder: invalid serverProof");
         }
         _;
     }
@@ -66,7 +66,7 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
      * @param request The struct of forwarded message for "createProxyWithNonce" function
      */
     function execute(bytes calldata serverProof, ForwardDeployData calldata request) 
-        checkBase (serverProof,  bytes4(keccak256(abi.encodePacked(request.domain)))) 
+        checkBase (serverProof,  bytes4(keccak256(abi.encodePacked(request.domain))), request.from) 
         public payable virtual returns (bytes4 magicValue) {
 
         magicValue = _deploy(request, true);
@@ -106,10 +106,6 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
 
-            if(!_checkForwardedGas(gasleft(), request.gas)) {
-                return INSUFFICIENT_BALANCE;
-            }
-
             (bool success, ) = address(request.recipient).call{gas : request.gas}(
                 abi.encodeWithSelector(
                     IValeriumProxyFactory.createProxyWithNonce.selector,
@@ -118,6 +114,8 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
                     request.salt
                 )
             );
+
+            _checkForwardedGas(gasleft(), request.gas);
 
             if (!success) {
                 return DEPLOYMENT_FAILED;
@@ -179,12 +177,14 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
      * Checks if the gas forwarded is sufficient
      * @param gasLeft gas left after the forwarding
      * @param requestGas gas requested for the forwarding
+     * @dev To avoid insufficient gas griefing attacks, as referenced in https://ronan.eth.limo/blog/ethereum-gas-dangers/
      */
-    function _checkForwardedGas(uint256 gasLeft, uint256 requestGas) private pure returns (bool success) {
-        if (gasLeft >= requestGas + (requestGas / 64)) {
-            return false;
+    function _checkForwardedGas(uint256 gasLeft, uint256 requestGas) private pure {
+        if (gasLeft < requestGas / 63) {
+            assembly {
+                invalid()
+            }
         }
-        return true;
     }
 }
 

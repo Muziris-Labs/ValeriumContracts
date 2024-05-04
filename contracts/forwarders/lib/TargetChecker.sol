@@ -30,15 +30,17 @@ library TargetChecker {
         return success && returnSize >= 0x20 && returnValue > 0;
     }
 
-     /**
+    /**
      * Checks if the gas forwarded is sufficient
      * @param gasLeft gas left after the forwarding
      * @param requestGas gas requested for the forwarding
+     * @dev To avoid insufficient gas griefing attacks, as referenced in https://ronan.eth.limo/blog/ethereum-gas-dangers/
      */
-    function _checkForwardedGas(uint256 gasLeft, uint256 requestGas) internal pure returns (bool success) {
-        if (gasLeft >= requestGas + (requestGas / 64)) {
-            return false;
+    function _checkForwardedGas(uint256 gasLeft, uint256 requestGas) internal pure {
+        if (gasLeft < requestGas / 63) {
+            assembly {
+                invalid()
+            }
         }
-        return true;
     }
 }

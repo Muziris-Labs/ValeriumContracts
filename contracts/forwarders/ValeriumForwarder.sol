@@ -2,7 +2,6 @@
 pragma solidity >=0.7.0 <0.9.0;
 
 import "./lib/ExecuteHandler.sol";
-import "../cross-chain/ProofHandler.sol";
 
 /**
  * @title ValeriumForwarder - A contract that forwards transactions to a target contract.
@@ -10,7 +9,7 @@ import "../cross-chain/ProofHandler.sol";
  * @author Anoy Roy Chwodhury - <anoyroyc3545@gmail.com>
  */
 
-contract ValeriumForwarder is ExecuteHandler, ProofHandler {
+contract ValeriumForwarder is ExecuteHandler {
     constructor(string memory name, string memory version) ExecuteHandler(name, version) {}
 
     event ForwarderResult(bytes4 result);
@@ -30,8 +29,6 @@ contract ValeriumForwarder is ExecuteHandler, ProofHandler {
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable virtual returns (bytes4 magicValue) {
-        addProof(request.proof);
-
         magicValue = _execute(request, token, gasPrice, baseGas, estimatedFees, true);
         emit ForwarderResult(magicValue);
     }
@@ -52,8 +49,6 @@ contract ValeriumForwarder is ExecuteHandler, ProofHandler {
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable virtual returns (bytes4 magicValue){
-        addProof(request.proof);
-
         magicValue = _executeBatch(request, token, gasPrice, baseGas, estimatedFees, true);
         emit ForwarderResult(magicValue);
     }
@@ -74,8 +69,6 @@ contract ValeriumForwarder is ExecuteHandler, ProofHandler {
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable virtual returns (bytes4 magicValue) {
-        addProof(request.proof);
-
         magicValue = _executeRecovery(request, token, gasPrice, baseGas, estimatedFees, true);
         emit ForwarderResult(magicValue);
     }
@@ -95,8 +88,6 @@ contract ValeriumForwarder is ExecuteHandler, ProofHandler {
         uint256 baseGas, 
         uint256 estimatedFees
         ) public payable virtual returns (bytes4 magicValue) {
-        addProof(request.proof);
-
         magicValue = _changeRecovery(request, token, gasPrice, baseGas, estimatedFees, true);
         emit ForwarderResult(magicValue);
     }

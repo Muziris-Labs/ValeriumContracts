@@ -63,12 +63,15 @@ abstract contract ServerHandler is ProofHandler, Verifier {
      * @param _proof The proof inputs
      * @param _serverHash The server hash
      * @param _verifier The address of the verifier contract
+     * @param _domain The domain
+     * @param _addr The address
      */
     function verify(
         bytes calldata _proof,
         bytes32 _serverHash,
         address _verifier,
-        bytes4 _domain
+        bytes4 _domain,
+        address _addr
     ) internal returns (bool) {
         bytes32[] memory publicInputs;
         
@@ -79,10 +82,11 @@ abstract contract ServerHandler is ProofHandler, Verifier {
 
         // Use scope here to limit variable lifetime and prevent `stack too deep` errors
         {
-            publicInputs = new bytes32[](3);
+            publicInputs = new bytes32[](4);
             publicInputs[0] = _serverHash;
             publicInputs[1] = bytes32(uint256(uint32(_domain)));
             publicInputs[2] = bytes32(getChainId());
+            publicInputs[3] = bytes32(uint256(uint160(_addr)));
         }
        
         return verifyProof(_proof, publicInputs, _verifier);

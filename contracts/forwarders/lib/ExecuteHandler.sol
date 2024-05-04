@@ -69,14 +69,12 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
 
         }
 
-        if(!TargetChecker._checkForwardedGas(gasleft(), request.gas)){
-            return ForwarderLogManager.INSUFFICIENT_BALANCE;
-        }
-
         // Encode the parameters for optimized gas usage
         bytes memory encodedParams = encodeExecuteParams(request, token, gasPrice, baseGas, estimatedFees);
 
         (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+
+        TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
         if (!success) {
             return ForwarderLogManager.EXECUTION_FAILED;
@@ -128,14 +126,12 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         // Nonce should be used before the call to prevent reusing by reentrancy
         _useNonce(signer);
 
-        if(!TargetChecker._checkForwardedGas(gasleft(), request.gas)){
-            return ForwarderLogManager.INSUFFICIENT_BALANCE;
-        }
-
         // Encode the parameters for optimized gas usage
         bytes memory encodedParams = encodeExecuteBatchParams(request, token, gasPrice, baseGas, estimatedFees);
 
         (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+
+        TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
         if (!success) {
             return ForwarderLogManager.EXECUTION_FAILED;
@@ -189,14 +185,12 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             _useNonce(signer);
         }
 
-        if(!TargetChecker._checkForwardedGas(gasleft(), request.gas)){
-            return ForwarderLogManager.INSUFFICIENT_BALANCE;
-        }
-        
         // Encode the parameters for more efficient gas usage
         bytes memory encodedParams = encodeExecuteRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
             
         (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+
+        TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
         if (!success) {
             return ForwarderLogManager.EXECUTION_FAILED;
@@ -250,14 +244,12 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             _useNonce(signer);
         }
 
-       if(!TargetChecker._checkForwardedGas(gasleft(), request.gas)){
-            return ForwarderLogManager.INSUFFICIENT_BALANCE;
-        }
-
         // Encode the parameters for more efficient gas usage
         bytes memory encodedParams = encodeChangeRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
 
         (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+
+        TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
         if (!success) {
             return ForwarderLogManager.EXECUTION_FAILED;
@@ -285,6 +277,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         return abi.encodeWithSelector(
             functionSignature,
             request.proof,
+            request.from,
             request.to,
             request.value,
             request.data,
@@ -376,6 +369,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         encodedParams = abi.encodeWithSelector(
             functionSelector,
             request.proof,
+            request.from,
             request.to,
             request.value,
             request.data,
@@ -480,6 +474,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         return abi.encodeWithSelector(
                 functionSignature,
                 request.proof,
+                request.from,
                 request.newTxHash,
                 request.newTxVerifier,
                 request.publicStorage,
@@ -570,6 +565,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         return abi.encodeWithSelector(
             functionSignature,
             request.proof,
+            request.from,
             request.newRecoveryHash,
             request.newRecoveryVerifier,
             request.publicStorage,

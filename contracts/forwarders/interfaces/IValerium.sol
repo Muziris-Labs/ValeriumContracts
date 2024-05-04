@@ -11,6 +11,7 @@ interface IValerium {
     /**
      * @notice Executes a transaction with provided parameters using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param to The address of the receiver
      * @param value The amount of Ether to send
      * @param data The data payload
@@ -22,6 +23,7 @@ interface IValerium {
      */
     function executeTxWithForwarder(
         bytes calldata _proof, 
+        address from,
         address to, 
         uint256 value,
         bytes calldata data, 
@@ -34,6 +36,7 @@ interface IValerium {
     /**
      * @notice Executes a batch of transactions with provided parameters using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param to Array of destination addresses
      * @param value Array of Ether values
      * @param data Array of data payloads
@@ -45,6 +48,7 @@ interface IValerium {
      */
     function executeBatchTxWithForwarder(
         bytes calldata _proof, 
+        address from,
         address[] calldata to, 
         uint256[] calldata value, 
         bytes[] calldata data, 
@@ -58,6 +62,7 @@ interface IValerium {
     /**
      * @notice Executes a recovery transaction to change the transaction hash, transaction verifier and public storage using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param _newTxHash The new transaction hash
      * @param _newTxVerifier The address of the new transaction verifier
      * @param _publicStorage The new public storage
@@ -69,6 +74,7 @@ interface IValerium {
      */
     function executeRecoveryWithForwarder(
         bytes calldata _proof, 
+        address from,
         bytes32 _newTxHash, 
         address _newTxVerifier,
         bytes calldata _publicStorage, 
@@ -81,6 +87,7 @@ interface IValerium {
    /**
      * @notice Executes a recovery transaction to change the recovery hash, recovery verifier and public storage using the trusted forwarder
      * @param _proof The proof input
+     * @param from The address of the sender
      * @param _newRecoveryHash The new recovery hash
      * @param _newRecoveryVerifier The address of the new recovery verifier
      * @param _publicStorage The new public storage
@@ -92,6 +99,7 @@ interface IValerium {
      */
     function changeRecoveryWithForwarder(
         bytes calldata _proof, 
+        address from,
         bytes32 _newRecoveryHash, 
         address _newRecoveryVerifier, 
         bytes calldata _publicStorage, 
