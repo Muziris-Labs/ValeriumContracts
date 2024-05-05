@@ -94,8 +94,8 @@ contract ValeriumProxyFactory is DomainManager, Valerium2771Context, ProofHandle
         // Check if the domain already exists
         require(!domainExists(domain), "Domain already exists");
 
-        // If the initializer or domain changes the proxy address should change too. Hashing the initializer data is cheaper than just concatinating it
-        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), keccak256(initializer), saltNonce));
+        // If the domain changes the proxy address should change too. 
+        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), saltNonce));
         proxy = deployProxy(initializer, salt);
         addDomain(domain, address(proxy));
         emit ProxyCreation(proxy, CurrentSingleton);
@@ -117,8 +117,8 @@ contract ValeriumProxyFactory is DomainManager, Valerium2771Context, ProofHandle
         // Check if the domain already exists
         require(!domainExists(domain), "Domain already exists");
 
-        // If the initializer or domain changes the proxy address should change too. Hashing the initializer data is cheaper than just concatinating it
-        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), keccak256(initializer), saltNonce, getChainId()));
+        // If the domain changes the proxy address should change too. 
+        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), saltNonce, getChainId()));
         proxy = deployProxy(initializer, salt);
         addDomain(domain, address(proxy));
         emit ProxyCreation(proxy, CurrentSingleton);

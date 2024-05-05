@@ -23,21 +23,19 @@ abstract contract ServerHandler is ProofHandler, Verifier {
     bytes32 internal serverHash;
 
     /**
+     * @notice Initializes the genesis address.
+     */
+    constructor() {
+        GenesisAddress = msg.sender;
+    }
+
+    /**
      * @dev Checks if the caller is the genesis address.
      */
     modifier onlyGenesis() {
         require(msg.sender == GenesisAddress, "Only genesis can call this function");
         _;
         
-    }
-
-    /**
-     * @notice Sets the genesis address.
-     * @param _genesisAddress The address of the genesis
-     */
-    function setGenesis(address _genesisAddress) external {
-        require(GenesisAddress == address(0), "Genesis already set");
-        GenesisAddress = _genesisAddress;
     }
 
     /**
