@@ -434,7 +434,7 @@ contract Valerium is
      * @param token  The address of the token, if the address is 0x0, it is an Ether transaction
      * @param estimatedFees The estimated fees of the transaction
      */
-    function checkBalance(address token, uint256 estimatedFees) public view returns (bool) {
+    function checkBalance(address token, uint256 estimatedFees) internal view returns (bool) {
         if(token != address(0)){
             uint8 decimals = IERC20(token).decimals();
             if(IERC20(token).balanceOf(address(this)) < estimatedFees / 10 ** (18 - decimals)){
