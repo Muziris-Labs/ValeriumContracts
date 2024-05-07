@@ -42,6 +42,14 @@ module.exports = {
       url: `https://1rpc.io/mode`,
       accounts: [PRIVATE_KEY],
     },
+    baseSepolia: {
+      url: `https://base-sepolia-rpc.publicnode.com`,
+      accounts: [PRIVATE_KEY],
+    },
+    modeSepolia: {
+      url: `https://sepolia.mode.network`,
+      accounts: [PRIVATE_KEY],
+    },
   },
   etherscan: {
     apiKey: {
