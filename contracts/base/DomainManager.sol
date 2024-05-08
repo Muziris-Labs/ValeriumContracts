@@ -5,6 +5,7 @@ pragma solidity >=0.7.0 <0.9.0;
  * @title Domain Manager - Manages Domain and its ValeriumProxy Contract.
  * @dev Uses a map to store the domain on-chain and its corresponding ValeriumProxy contract.
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
+ * @dev DEPRECATED: This contract is deprecated and will be removed in future releases.
  */
 
 abstract contract DomainManager {

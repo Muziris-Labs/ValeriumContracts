@@ -12,7 +12,6 @@ interface IProxyCreationCallback {
      * @param proxy The newly created ValeriumProxy instance.
      * @param _singleton The address of the singleton contract used to create the proxy.
      * @param initializer The initializer function call data.
-     * @param saltNonce The nonce used to generate the salt for the proxy deployment.
      */
-    function proxyCreated(ValeriumProxy proxy, address _singleton, bytes calldata initializer, uint256 saltNonce) external;
+    function proxyCreated(ValeriumProxy proxy, address _singleton, bytes calldata initializer) external;
 }

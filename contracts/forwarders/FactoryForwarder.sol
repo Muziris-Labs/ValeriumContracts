@@ -18,7 +18,7 @@ import "./lib/TargetChecker.sol";
  */
 
 interface IValeriumProxyFactory {
-    function createProxyWithNonce(string memory domain, bytes memory initializer, uint256 saltNonce) external;
+    function createProxyWithNonce(string memory domain, bytes memory initializer) external;
 }
 
 contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
@@ -52,13 +52,12 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
         uint256 gas;
         string domain;
         bytes initializer;
-        uint256 salt;
         bytes signature;
     }
 
     // typehash of ForwardDeployData
     bytes32 internal constant FORWARD_DEPLOY_TYPEHASH = keccak256(
-        "ForwardDeploy(address from,address recipient,uint48 deadline,uint256 nonce,uint256 gas,string domain,bytes initializer,uint256 salt)"
+        "ForwardDeploy(address from,address recipient,uint48 deadline,uint256 nonce,uint256 gas,string domain,bytes initializer)"
     );
 
     /**
@@ -110,8 +109,7 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
                 abi.encodeWithSelector(
                     IValeriumProxyFactory.createProxyWithNonce.selector,
                     request.domain,
-                    request.initializer,
-                    request.salt
+                    request.initializer
                 )
             );
 
@@ -165,8 +163,7 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
                 nonces(request.from),
                 request.gas,
                 keccak256(bytes(request.domain)),
-                keccak256(request.initializer),
-                request.salt
+                keccak256(request.initializer)
             ))
         ).tryRecover(request.signature);
 

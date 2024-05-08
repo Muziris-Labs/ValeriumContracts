@@ -12,7 +12,7 @@ import "../base/Verifier.sol";
  * @title Proxy Factory - Allows to create a new proxy contract and execute a message call to the new proxy within one transaction.
  * @author Anoy Roy Chowdhury - <anoyroyc3545@gmail.com>
  */
-contract ValeriumProxyFactory is DomainManager, Valerium2771Context, ProofHandler, Verifier {
+contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
     event ProxyCreation(ValeriumProxy indexed proxy, address singleton);
     event SingletonUpdated(address singleton);
 
@@ -85,62 +85,70 @@ contract ValeriumProxyFactory is DomainManager, Valerium2771Context, ProofHandle
     }
 
     /**
-     * @notice Deploys a new proxy with `_singleton` singleton and `saltNonce` salt. Optionally executes an initializer call to a new proxy.
+     * @notice Deploys a new proxy with `_singleton` singleton. Optionally executes an initializer call to a new proxy.
      * @param domain The domain name of the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
-     * @param saltNonce Nonce that will be used to generate the salt to calculate the address of the new proxy contract.
      */
-    function createProxyWithNonce(string memory domain, bytes memory initializer, uint256 saltNonce) checkBase public returns (ValeriumProxy proxy) {
-        // Check if the domain already exists
-        require(!domainExists(domain), "Domain already exists");
-
+    function createProxyWithNonce(string memory domain, bytes memory initializer) checkBase public returns (ValeriumProxy proxy) {
         // If the domain changes the proxy address should change too. 
-        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), saltNonce));
+        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain))));
         proxy = deployProxy(initializer, salt);
-        addDomain(domain, address(proxy));
+
         emit ProxyCreation(proxy, CurrentSingleton);
     }
 
     /**
-     * @notice Deploys a new chain-specific proxy with `_singleton` singleton and `saltNonce` salt. Optionally executes an initializer call to a new proxy.
-     * @dev Allows to create a new proxy contract that should exist only on 1 network (e.g. specific governance or admin accounts)
-     *      by including the chain id in the create2 salt. Such proxies cannot be created on other networks by replaying the transaction.
-     * @param domain The domain name of the new proxy contract.
-     * @param initializer Payload for a message call to be sent to a new proxy contract.
-     * @param saltNonce Nonce that will be used to generate the salt to calculate the address of the new proxy contract.
-     */
-    function createChainSpecificProxyWithNonce(
-        string memory domain,
-        bytes memory initializer,
-        uint256 saltNonce
-    ) checkBase public returns (ValeriumProxy proxy) {
-        // Check if the domain already exists
-        require(!domainExists(domain), "Domain already exists");
-
-        // If the domain changes the proxy address should change too. 
-        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain)), saltNonce, getChainId()));
-        proxy = deployProxy(initializer, salt);
-        addDomain(domain, address(proxy));
-        emit ProxyCreation(proxy, CurrentSingleton);
-    }
-
-    /**
-     * @notice Deploy a new proxy with `_singleton` singleton and `saltNonce` salt.
+     * @notice Deploy a new proxy with `_singleton` singleton
      *         Optionally executes an initializer call to a new proxy and calls a specified callback address `callback`.
      * @param domain The domain name of the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
-     * @param saltNonce Nonce that will be used to generate the salt to calculate the address of the new proxy contract.
      * @param callback Callback that will be invoked after the new proxy contract has been successfully deployed and initialized.
      */
     function createProxyWithCallback(
         string memory domain,
         bytes memory initializer,
-        uint256 saltNonce,
         IProxyCreationCallback callback
     ) checkBase public returns (ValeriumProxy proxy) {
-        uint256 saltNonceWithCallback = uint256(keccak256(abi.encodePacked(saltNonce, callback)));
-        proxy = createProxyWithNonce(domain, initializer, saltNonceWithCallback);
-        if (address(callback) != address(0)) callback.proxyCreated(proxy, CurrentSingleton, initializer, saltNonce);
+        proxy = createProxyWithNonce(domain, initializer);
+        if (address(callback) != address(0)) callback.proxyCreated(proxy, CurrentSingleton, initializer);
+    }
+
+     /**
+     * @notice Retrieves the ValeriumProxy contract address for a given domain.
+     * @param domain Domain name.
+     * @return valeriumProxy ValeriumProxy contract address.
+     */
+    function getValeriumProxy(string memory domain) public view returns (address valeriumProxy) {
+        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain))));
+        bytes memory deploymentData = abi.encodePacked(proxyCreationCode(), uint256(uint160(CurrentSingleton)));
+
+        // Calculate the address of the proxy contract using CREATE2
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                salt,
+                keccak256(deploymentData)
+            )
+        );
+
+        // Cast the hash to an address
+        address valerium = address(uint160(uint256(hash)));
+
+        if (isContract(valerium)) {
+            return valerium;
+        } else {
+            return address(0);
+        }
+    }
+
+    /**
+     * @notice Checks if a domain exists.
+     * @param domain Domain name.
+     * @return exists Boolean value indicating if the domain exists.
+     */
+    function domainExists(string memory domain) public view returns (bool exists) {
+        return getValeriumProxy(domain) != address(0);
     }
 
     /**
@@ -157,19 +165,6 @@ contract ValeriumProxyFactory is DomainManager, Valerium2771Context, ProofHandle
             size := extcodesize(account)
         }
         return size > 0;
-    }
-
-    /**
-     * @notice Returns the ID of the chain the contract is currently deployed on.
-     * @return The ID of the current chain as a uint256.
-     */
-    function getChainId() public view returns (uint256) {
-        uint256 id;
-        // solhint-disable-next-line no-inline-assembly
-        assembly {
-            id := chainid()
-        }
-        return id;
     }
 
     /**
