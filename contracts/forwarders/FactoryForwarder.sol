@@ -18,7 +18,7 @@ import "./lib/TargetChecker.sol";
  */
 
 interface IValeriumProxyFactory {
-    function createProxyWithNonce(string memory domain, bytes memory initializer) external;
+    function createProxyWithDomain(string memory domain, bytes memory initializer) external;
 }
 
 contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
@@ -107,7 +107,7 @@ contract FactoryForwarder is EIP712, Nonces, FactoryLogManager, ServerHandler {
 
             (bool success, ) = address(request.recipient).call{gas : request.gas}(
                 abi.encodeWithSelector(
-                    IValeriumProxyFactory.createProxyWithNonce.selector,
+                    IValeriumProxyFactory.createProxyWithDomain.selector,
                     request.domain,
                     request.initializer
                 )

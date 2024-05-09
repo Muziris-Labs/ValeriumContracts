@@ -3,7 +3,6 @@ pragma solidity >=0.7.0 <0.9.0;
 
 import "./ValeriumProxy.sol";
 import "./IProxyCreationCallback.sol";
-import "../base/DomainManager.sol";
 import "../external/Valerium2771Context.sol";
 import "../cross-chain/ProofHandler.sol";
 import "../base/Verifier.sol";
@@ -88,8 +87,9 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @notice Deploys a new proxy with `_singleton` singleton. Optionally executes an initializer call to a new proxy.
      * @param domain The domain name of the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
+     * @dev The domain name is used to calculate the salt for the CREATE2 call.
      */
-    function createProxyWithNonce(string memory domain, bytes memory initializer) checkBase public returns (ValeriumProxy proxy) {
+    function createProxyWithDomain(string memory domain, bytes memory initializer) checkBase public returns (ValeriumProxy proxy) {
         // If the domain changes the proxy address should change too. 
         bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain))));
         proxy = deployProxy(initializer, salt);
@@ -103,13 +103,14 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @param domain The domain name of the new proxy contract.
      * @param initializer Payload for a message call to be sent to a new proxy contract.
      * @param callback Callback that will be invoked after the new proxy contract has been successfully deployed and initialized.
+     * @dev The domain name is used to calculate the salt for the CREATE2 call.
      */
     function createProxyWithCallback(
         string memory domain,
         bytes memory initializer,
         IProxyCreationCallback callback
     ) checkBase public returns (ValeriumProxy proxy) {
-        proxy = createProxyWithNonce(domain, initializer);
+        proxy = createProxyWithDomain(domain, initializer);
         if (address(callback) != address(0)) callback.proxyCreated(proxy, CurrentSingleton, initializer);
     }
 
