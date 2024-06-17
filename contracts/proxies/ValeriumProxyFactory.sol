@@ -34,9 +34,12 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
     /**
      * @notice  Modifier to restrict the execution of a function to the base chain. If the contract is not deployed on the base chain, the function can only be called by the trusted forwarder.
      */
-    modifier checkBase {
+    modifier checkBase() {
         if (!IsBaseChain) {
-            require(msg.sender == trustedForwarder(), "Only the trusted forwarder can call this function");
+            require(
+                msg.sender == trustedForwarder(),
+                "Only the trusted forwarder can call this function"
+            );
         }
         _;
     }
@@ -52,20 +55,48 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @param salt Create2 salt to use for calculating the address of the new proxy contract.
      * @return proxy Address of the new proxy contract.
      */
-    function deployProxy(bytes memory initializer, bytes32 salt) internal returns (ValeriumProxy proxy) {
-        require(isContract(CurrentSingleton), "Singleton contract not deployed");
+    function deployProxy(
+        bytes memory initializer,
+        bytes32 salt
+    ) internal returns (ValeriumProxy proxy) {
+        require(
+            isContract(CurrentSingleton),
+            "Singleton contract not deployed"
+        );
 
-        bytes memory deploymentData = abi.encodePacked(type(ValeriumProxy).creationCode, uint256(uint160(CurrentSingleton)));
+        bytes memory deploymentData = abi.encodePacked(
+            type(ValeriumProxy).creationCode
+        );
+
         // solhint-disable-next-line no-inline-assembly
         assembly {
-            proxy := create2(0x0, add(0x20, deploymentData), mload(deploymentData), salt)
+            proxy := create2(
+                0x0,
+                add(0x20, deploymentData),
+                mload(deploymentData),
+                salt
+            )
         }
         require(address(proxy) != address(0), "Create2 call failed");
+
+        // Setup the singleton address for the proxy
+        ValeriumProxy(proxy).setupSingleton(CurrentSingleton);
 
         if (initializer.length > 0) {
             // solhint-disable-next-line no-inline-assembly
             assembly {
-                if eq(call(gas(), proxy, 0, add(initializer, 0x20), mload(initializer), 0, 0), 0) {
+                if eq(
+                    call(
+                        gas(),
+                        proxy,
+                        0,
+                        add(initializer, 0x20),
+                        mload(initializer),
+                        0,
+                        0
+                    ),
+                    0
+                ) {
                     revert(0, 0)
                 }
             }
@@ -78,7 +109,10 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @param _singleton Address of the current singleton contract.
      */
     function updateSingleton(address _singleton) external {
-        require(msg.sender == GenesisAddress, "Only the Genesis Address can update the Singleton");
+        require(
+            msg.sender == GenesisAddress,
+            "Only the Genesis Address can update the Singleton"
+        );
         CurrentSingleton = _singleton;
         emit SingletonUpdated(_singleton);
     }
@@ -89,9 +123,14 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @param initializer Payload for a message call to be sent to a new proxy contract.
      * @dev The domain name is used to calculate the salt for the CREATE2 call.
      */
-    function createProxyWithDomain(string memory domain, bytes memory initializer) checkBase public returns (ValeriumProxy proxy) {
-        // If the domain changes the proxy address should change too. 
-        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain))));
+    function createProxyWithDomain(
+        string memory domain,
+        bytes memory initializer
+    ) public checkBase returns (ValeriumProxy proxy) {
+        // If the domain changes the proxy address should change too.
+        bytes32 salt = keccak256(
+            abi.encodePacked(keccak256(abi.encodePacked(domain)))
+        );
         proxy = deployProxy(initializer, salt);
 
         emit ProxyCreation(proxy, CurrentSingleton);
@@ -109,19 +148,24 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
         string memory domain,
         bytes memory initializer,
         IProxyCreationCallback callback
-    ) checkBase public returns (ValeriumProxy proxy) {
+    ) public checkBase returns (ValeriumProxy proxy) {
         proxy = createProxyWithDomain(domain, initializer);
-        if (address(callback) != address(0)) callback.proxyCreated(proxy, CurrentSingleton, initializer);
+        if (address(callback) != address(0))
+            callback.proxyCreated(proxy, CurrentSingleton, initializer);
     }
 
-     /**
+    /**
      * @notice Retrieves the ValeriumProxy contract address for a given domain.
      * @param domain Domain name.
      * @return valeriumProxy ValeriumProxy contract address.
      */
-    function getValeriumProxy(string memory domain) public view returns (address valeriumProxy) {
-        bytes32 salt = keccak256(abi.encodePacked(keccak256(abi.encodePacked(domain))));
-        bytes memory deploymentData = abi.encodePacked(proxyCreationCode(), uint256(uint160(CurrentSingleton)));
+    function getValeriumProxy(
+        string memory domain
+    ) public view returns (address valeriumProxy) {
+        bytes32 salt = keccak256(
+            abi.encodePacked(keccak256(abi.encodePacked(domain)))
+        );
+        bytes memory deploymentData = abi.encodePacked(proxyCreationCode());
 
         // Calculate the address of the proxy contract using CREATE2
         bytes32 hash = keccak256(
@@ -148,7 +192,9 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @param domain Domain name.
      * @return exists Boolean value indicating if the domain exists.
      */
-    function domainExists(string memory domain) public view returns (bool exists) {
+    function domainExists(
+        string memory domain
+    ) public view returns (bool exists) {
         return getValeriumProxy(domain) != address(0);
     }
 
@@ -173,7 +219,10 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @param forwarder Address of the forwarder contract.
      */
     function setupForwarder(address forwarder) public {
-        require(msg.sender == GenesisAddress, "Only the Genesis Address can setup the forwarder");
+        require(
+            msg.sender == GenesisAddress,
+            "Only the Genesis Address can setup the forwarder"
+        );
         setupTrustedForwarder(forwarder);
     }
 
@@ -182,7 +231,10 @@ contract ValeriumProxyFactory is Valerium2771Context, ProofHandler, Verifier {
      * @param newGenesis Address of the new Genesis Address.
      */
     function transferGenesis(address newGenesis) external {
-        require(msg.sender == GenesisAddress, "Only the Genesis Address can transfer ownership");
+        require(
+            msg.sender == GenesisAddress,
+            "Only the Genesis Address can transfer ownership"
+        );
         GenesisAddress = newGenesis;
     }
 }

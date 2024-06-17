@@ -16,12 +16,14 @@ import "./DataManager.sol";
  * @notice This contract is specifically designed to be used with the Valerium Wallet. Some function may not work as expected if used with other wallets.
  */
 
-abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
-
+abstract contract ExecuteHandler is EIP712, Nonces, DataManager {
     using ECDSA for bytes32;
 
     // Initializing the EIP712 Domain Separator
-    constructor(string memory name, string memory version) EIP712(name, version) {}
+    constructor(
+        string memory name,
+        string memory version
+    ) EIP712(name, version) {}
 
     /**
      * Executes the "executeTxWithForwarder" function of the Valerium contract.
@@ -40,8 +42,13 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 estimatedFees,
         bool requireValidRequest
     ) internal virtual returns (bytes4 macicValue) {
-          {
-            (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
+        {
+            (
+                bool isTrustedForwarder,
+                bool active,
+                bool signerMatch,
+                address signer
+            ) = _validate(request);
 
             // Need to explicitly specify if a revert is required since non-reverting is default for
             // batches and reversion is opt-in since it could be useful in some scenarios
@@ -60,19 +67,26 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             }
 
             // Ignore an invalid request because requireValidRequest = false
-            if(!isTrustedForwarder || !active || !signerMatch) {
-               return ForwarderLogManager.EXECUTION_FAILED;
+            if (!isTrustedForwarder || !active || !signerMatch) {
+                return ForwarderLogManager.EXECUTION_FAILED;
             }
 
             // Nonce should be used before the call to prevent reusing by reentrancy
             _useNonce(signer);
-
         }
 
         // Encode the parameters for optimized gas usage
-        bytes memory encodedParams = encodeExecuteParams(request, token, gasPrice, baseGas, estimatedFees);
+        bytes memory encodedParams = encodeExecuteParams(
+            request,
+            token,
+            gasPrice,
+            baseGas,
+            estimatedFees
+        );
 
-        (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+        (bool success, bytes memory result) = request.recipient.call{
+            gas: request.gas
+        }(encodedParams);
 
         TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
@@ -80,7 +94,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             return ForwarderLogManager.EXECUTION_FAILED;
         }
 
-        return ForwarderLogManager.EXECUTION_SUCCESSFUL;
+        return abi.decode(result, (bytes4));
     }
 
     /**
@@ -100,7 +114,12 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 estimatedFees,
         bool requireValidRequest
     ) internal virtual returns (bytes4 magicValue) {
-        (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
+        (
+            bool isTrustedForwarder,
+            bool active,
+            bool signerMatch,
+            address signer
+        ) = _validate(request);
 
         // Need to explicitly specify if a revert is required since non-reverting is default for
         // batches and reversion is opt-in since it could be useful in some scenarios
@@ -118,8 +137,8 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             }
         }
 
-         // Ignore an invalid request because requireValidRequest = false
-        if(!isTrustedForwarder || !active || !signerMatch) {
+        // Ignore an invalid request because requireValidRequest = false
+        if (!isTrustedForwarder || !active || !signerMatch) {
             return ForwarderLogManager.EXECUTION_FAILED;
         }
 
@@ -127,9 +146,17 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         _useNonce(signer);
 
         // Encode the parameters for optimized gas usage
-        bytes memory encodedParams = encodeExecuteBatchParams(request, token, gasPrice, baseGas, estimatedFees);
+        bytes memory encodedParams = encodeExecuteBatchParams(
+            request,
+            token,
+            gasPrice,
+            baseGas,
+            estimatedFees
+        );
 
-        (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+        (bool success, bytes memory result) = request.recipient.call{
+            gas: request.gas
+        }(encodedParams);
 
         TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
@@ -137,10 +164,10 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             return ForwarderLogManager.EXECUTION_FAILED;
         }
 
-        return ForwarderLogManager.EXECUTION_SUCCESSFUL;
+        return abi.decode(result, (bytes4));
     }
 
-     /**
+    /**
      * Executes the "executeRecoveryWithForwarder" function of the Valerium contract.
      * @param request ForwardExecuteRecoveryhData struct
      * @param token The address of the token
@@ -156,9 +183,14 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 baseGas,
         uint256 estimatedFees,
         bool requireValidRequest
-    ) internal virtual returns (bytes4 magicValue){
+    ) internal virtual returns (bytes4 magicValue) {
         {
-            (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
+            (
+                bool isTrustedForwarder,
+                bool active,
+                bool signerMatch,
+                address signer
+            ) = _validate(request);
 
             // Need to explicitly specify if a revert is required since non-reverting is default for
             // batches and reversion is opt-in since it could be useful in some scenarios
@@ -177,7 +209,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             }
 
             // Ignore an invalid request because requireValidRequest = false
-            if(!isTrustedForwarder || !active || !signerMatch) {
+            if (!isTrustedForwarder || !active || !signerMatch) {
                 return ForwarderLogManager.EXECUTION_FAILED;
             }
 
@@ -186,9 +218,17 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         }
 
         // Encode the parameters for more efficient gas usage
-        bytes memory encodedParams = encodeExecuteRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
-            
-        (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+        bytes memory encodedParams = encodeExecuteRecoveryParams(
+            request,
+            token,
+            gasPrice,
+            baseGas,
+            estimatedFees
+        );
+
+        (bool success, bytes memory result) = request.recipient.call{
+            gas: request.gas
+        }(encodedParams);
 
         TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
@@ -196,7 +236,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             return ForwarderLogManager.EXECUTION_FAILED;
         }
 
-        return ForwarderLogManager.EXECUTION_SUCCESSFUL;
+        return abi.decode(result, (bytes4));
     }
 
     /**
@@ -215,9 +255,14 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 baseGas,
         uint256 estimatedFees,
         bool requireValidRequest
-    ) internal virtual returns (bytes4 magicValue){
+    ) internal virtual returns (bytes4 magicValue) {
         {
-            (bool isTrustedForwarder, bool active, bool signerMatch, address signer) = _validate(request);
+            (
+                bool isTrustedForwarder,
+                bool active,
+                bool signerMatch,
+                address signer
+            ) = _validate(request);
 
             // Need to explicitly specify if a revert is required since non-reverting is default for
             // batches and reversion is opt-in since it could be useful in some scenarios
@@ -236,7 +281,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             }
 
             // Ignore an invalid request because requireValidRequest = false
-            if(!isTrustedForwarder || !active || !signerMatch) {
+            if (!isTrustedForwarder || !active || !signerMatch) {
                 return ForwarderLogManager.EXECUTION_FAILED;
             }
 
@@ -245,9 +290,17 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         }
 
         // Encode the parameters for more efficient gas usage
-        bytes memory encodedParams = encodeChangeRecoveryParams(request, token, gasPrice, baseGas, estimatedFees);
+        bytes memory encodedParams = encodeChangeRecoveryParams(
+            request,
+            token,
+            gasPrice,
+            baseGas,
+            estimatedFees
+        );
 
-        (bool success, ) = request.recipient.call{gas : request.gas}(encodedParams);
+        (bool success, bytes memory result) = request.recipient.call{
+            gas: request.gas
+        }(encodedParams);
 
         TargetChecker._checkForwardedGas(gasleft(), request.gas);
 
@@ -255,10 +308,10 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
             return ForwarderLogManager.EXECUTION_FAILED;
         }
 
-        return ForwarderLogManager.EXECUTION_SUCCESSFUL;
+        return abi.decode(result, (bytes4));
     }
-    
-     /**
+
+    /**
      * Encodes the parameters for the "executeTxWithForwarder" function of the Valerium contract for avoiding stack too deep error
      * @param request ForwardExecuteData struct
      * @param token The address of the token
@@ -274,20 +327,20 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
         bytes4 functionSignature = IValerium.executeTxWithForwarder.selector;
-        return abi.encodeWithSelector(
-            functionSignature,
-            request.proof,
-            request.from,
-            request.to,
-            request.value,
-            request.data,
-            token,
-            gasPrice,
-            baseGas,
-            estimatedFees
-        );
+        return
+            abi.encodeWithSelector(
+                functionSignature,
+                request.proof,
+                request.from,
+                request.to,
+                request.value,
+                request.data,
+                token,
+                gasPrice,
+                baseGas,
+                estimatedFees
+            );
     }
-
 
     /**
      * Validates the request by checking if the forwarder is trusted by the target, the request is active and the signer is valid
@@ -299,7 +352,17 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
      */
     function _validate(
         ForwardExecuteData calldata request
-    ) internal view virtual returns (bool isTrustedForwarder, bool active, bool signerMatch, address signer) {
+    )
+        internal
+        view
+        virtual
+        returns (
+            bool isTrustedForwarder,
+            bool active,
+            bool signerMatch,
+            address signer
+        )
+    {
         (bool isValid, address recovered) = _recoverForwardSigner(request);
 
         return (
@@ -333,20 +396,21 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
     function hashEncodedRequest(
         ForwardExecuteData calldata request
     ) internal view virtual returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                FORWARD_EXECUTE_TYPEHASH,
-                request.from,
-                request.recipient,
-                request.deadline,
-                nonces(request.from),
-                request.gas,
-                keccak256(request.proof),
-                request.to,
-                request.value,
-                keccak256(request.data)
-            )
-        );
+        return
+            keccak256(
+                abi.encode(
+                    FORWARD_EXECUTE_TYPEHASH,
+                    request.from,
+                    request.recipient,
+                    request.deadline,
+                    nonces(request.from),
+                    request.gas,
+                    keccak256(request.proof),
+                    request.to,
+                    request.value,
+                    keccak256(request.data)
+                )
+            );
     }
 
     /**
@@ -364,7 +428,9 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 baseGas,
         uint256 estimatedFees
     ) internal virtual returns (bytes memory encodedParams) {
-        bytes4 functionSelector = IValerium.executeBatchTxWithForwarder.selector;
+        bytes4 functionSelector = IValerium
+            .executeBatchTxWithForwarder
+            .selector;
 
         encodedParams = abi.encodeWithSelector(
             functionSelector,
@@ -380,8 +446,7 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         );
     }
 
-
-     /**
+    /**
      * Validates the request by checking if the forwarder is trusted by the target, the request is active and the signer is valid
      * @param request ForwardExecuteBatchData struct
      * @return isTrustedForwarder If the forwarder is trusted by the target, returns true
@@ -391,7 +456,17 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
      */
     function _validate(
         ForwardExecuteBatchData calldata request
-    ) internal view virtual returns (bool isTrustedForwarder, bool active, bool signerMatch, address signer) {
+    )
+        internal
+        view
+        virtual
+        returns (
+            bool isTrustedForwarder,
+            bool active,
+            bool signerMatch,
+            address signer
+        )
+    {
         (bool isValid, address recovered) = _recoverForwardSigner(request);
 
         return (
@@ -411,7 +486,12 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
     function _recoverForwardSigner(
         ForwardExecuteBatchData calldata request
     ) internal view virtual returns (bool, address) {
-        require(request.to.length == request.data.length && (request.value.length == 0 || request.value.length == request.data.length), "Mismatched input arrays");
+        require(
+            request.to.length == request.data.length &&
+                (request.value.length == 0 ||
+                    request.value.length == request.data.length),
+            "Mismatched input arrays"
+        );
 
         (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
             hashEncodedRequest(request)
@@ -429,30 +509,37 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
     ) internal view virtual returns (bytes32) {
         bytes32 dataHash;
         for (uint i = 0; i < request.data.length; i++) {
-            dataHash = keccak256(abi.encodePacked(dataHash, keccak256(request.data[i])));
+            dataHash = keccak256(
+                abi.encodePacked(dataHash, keccak256(request.data[i]))
+            );
         }
         bytes32 addressHash;
         for (uint i = 0; i < request.to.length; i++) {
-            addressHash = keccak256(abi.encodePacked(addressHash, request.to[i]));
+            addressHash = keccak256(
+                abi.encodePacked(addressHash, request.to[i])
+            );
         }
         bytes32 valueHash;
         for (uint i = 0; i < request.value.length; i++) {
-            valueHash= keccak256(abi.encodePacked(valueHash, abi.encodePacked(request.value[i])));
+            valueHash = keccak256(
+                abi.encodePacked(valueHash, abi.encodePacked(request.value[i]))
+            );
         }
-        return keccak256(
-            abi.encode(
-                FORWARD_EXECUTE_BATCH_TYPEHASH,
-                request.from,
-                request.recipient,
-                request.deadline,
-                nonces(request.from),
-                request.gas,
-                keccak256(request.proof),
-                addressHash,
-                valueHash,
-                dataHash
-            )
-        );
+        return
+            keccak256(
+                abi.encode(
+                    FORWARD_EXECUTE_BATCH_TYPEHASH,
+                    request.from,
+                    request.recipient,
+                    request.deadline,
+                    nonces(request.from),
+                    request.gas,
+                    keccak256(request.proof),
+                    addressHash,
+                    valueHash,
+                    dataHash
+                )
+            );
     }
 
     /**
@@ -470,8 +557,11 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 baseGas,
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
-        bytes4 functionSignature = IValerium.executeRecoveryWithForwarder.selector;
-        return abi.encodeWithSelector(
+        bytes4 functionSignature = IValerium
+            .executeRecoveryWithForwarder
+            .selector;
+        return
+            abi.encodeWithSelector(
                 functionSignature,
                 request.proof,
                 request.from,
@@ -482,10 +572,10 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
                 gasPrice,
                 baseGas,
                 estimatedFees
-            ); 
+            );
     }
 
-     /**
+    /**
      * Validates the request by checking if the forwarder is trusted by the target, the request is active and the signer is valid
      * @param request ForwardExecuteRecoveryData struct
      * @return isTrustedForwarder If the forwarder is trusted by the target, returns true
@@ -495,7 +585,17 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
      */
     function _validate(
         ForwardExecuteRecoveryData calldata request
-    ) internal view virtual returns (bool isTrustedForwarder, bool active, bool signerMatch, address signer) {
+    )
+        internal
+        view
+        virtual
+        returns (
+            bool isTrustedForwarder,
+            bool active,
+            bool signerMatch,
+            address signer
+        )
+    {
         (bool isValid, address recovered) = _recoverForwardSigner(request);
 
         return (
@@ -515,7 +615,6 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
     function _recoverForwardSigner(
         ForwardExecuteRecoveryData calldata request
     ) internal view virtual returns (bool, address) {
-
         (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
             hashEncodedRequest(request)
         ).tryRecover(request.signature);
@@ -530,20 +629,21 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
     function hashEncodedRequest(
         ForwardExecuteRecoveryData calldata request
     ) internal view virtual returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                FORWARD_EXECUTE_RECOVERY_TYPEHASH,
-                request.from,
-                request.recipient,
-                request.deadline,
-                nonces(request.from),
-                request.gas,
-                keccak256(request.proof),
-                request.newTxHash,
-                request.newTxVerifier,
-                keccak256(request.publicStorage)
-            )
-        );
+        return
+            keccak256(
+                abi.encode(
+                    FORWARD_EXECUTE_RECOVERY_TYPEHASH,
+                    request.from,
+                    request.recipient,
+                    request.deadline,
+                    nonces(request.from),
+                    request.gas,
+                    keccak256(request.proof),
+                    request.newTxHash,
+                    request.newTxVerifier,
+                    keccak256(request.publicStorage)
+                )
+            );
     }
 
     /**
@@ -561,22 +661,25 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
         uint256 baseGas,
         uint256 estimatedFees
     ) internal pure returns (bytes memory) {
-        bytes4 functionSignature = IValerium.changeRecoveryWithForwarder.selector;
-        return abi.encodeWithSelector(
-            functionSignature,
-            request.proof,
-            request.from,
-            request.newRecoveryHash,
-            request.newRecoveryVerifier,
-            request.publicStorage,
-            token,
-            gasPrice,
-            baseGas,
-            estimatedFees
-        );
+        bytes4 functionSignature = IValerium
+            .changeRecoveryWithForwarder
+            .selector;
+        return
+            abi.encodeWithSelector(
+                functionSignature,
+                request.proof,
+                request.from,
+                request.newRecoveryHash,
+                request.newRecoveryVerifier,
+                request.publicStorage,
+                token,
+                gasPrice,
+                baseGas,
+                estimatedFees
+            );
     }
 
-     /**
+    /**
      * Validates the request by checking if the forwarder is trusted by the target, the request is active and the signer is valid
      * @param request ForwardChangeRecoveryData struct
      * @return isTrustedForwarder If the forwarder is trusted by the target, returns true
@@ -586,7 +689,17 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
      */
     function _validate(
         ForwardChangeRecoveryData calldata request
-    ) internal view virtual returns (bool isTrustedForwarder, bool active, bool signerMatch, address signer) {
+    )
+        internal
+        view
+        virtual
+        returns (
+            bool isTrustedForwarder,
+            bool active,
+            bool signerMatch,
+            address signer
+        )
+    {
         (bool isValid, address recovered) = _recoverForwardSigner(request);
 
         return (
@@ -606,7 +719,6 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
     function _recoverForwardSigner(
         ForwardChangeRecoveryData calldata request
     ) internal view virtual returns (bool, address) {
-
         (address recovered, ECDSA.RecoverError err, ) = _hashTypedDataV4(
             hashEncodedRequest(request)
         ).tryRecover(request.signature);
@@ -621,19 +733,20 @@ abstract contract ExecuteHandler is EIP712, Nonces, DataManager{
     function hashEncodedRequest(
         ForwardChangeRecoveryData calldata request
     ) internal view virtual returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                FORWARD_CHANGE_RECOVERY_TYPEHASH,
-                request.from,
-                request.recipient,
-                request.deadline,
-                nonces(request.from),
-                request.gas,
-                keccak256(request.proof),
-                request.newRecoveryHash,
-                request.newRecoveryVerifier,
-                keccak256(request.publicStorage)
-            )
-        );
+        return
+            keccak256(
+                abi.encode(
+                    FORWARD_CHANGE_RECOVERY_TYPEHASH,
+                    request.from,
+                    request.recipient,
+                    request.deadline,
+                    nonces(request.from),
+                    request.gas,
+                    keccak256(request.proof),
+                    request.newRecoveryHash,
+                    request.newRecoveryVerifier,
+                    keccak256(request.publicStorage)
+                )
+            );
     }
 }
